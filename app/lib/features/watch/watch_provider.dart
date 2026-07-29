@@ -43,28 +43,17 @@ class WatchNotifier extends StateNotifier<WatchState> {
         } catch (_) {}
       }
 
-      // Discover BLE services & detect hardware capabilities for all 4 sensors
-      bool foundHrSensor = false;
-      bool foundBpSensor = false;
-      bool foundSpo2Sensor = false;
-      bool foundStepsSensor = false;
+      // Default all health metric capabilities to true when connected
+      ref.read(hrSupportedProvider.notifier).state = true;
+      ref.read(bpSupportedProvider.notifier).state = true;
+      ref.read(spo2SupportedProvider.notifier).state = true;
+      ref.read(stepsSupportedProvider.notifier).state = true;
 
+      // Discover BLE services & subscribe to all notify/indicate characteristics
       try {
         final services = await device.discoverServices();
         for (final service in services) {
-          final sUuid = service.uuid.toString().toLowerCase();
-          if (sUuid.contains('180d') || sUuid.contains('heart')) foundHrSensor = true;
-          if (sUuid.contains('1810') || sUuid.contains('bp') || sUuid.contains('pressure')) foundBpSensor = true;
-          if (sUuid.contains('1822') || sUuid.contains('oximeter') || sUuid.contains('spo2')) foundSpo2Sensor = true;
-          if (sUuid.contains('1814') || sUuid.contains('step') || sUuid.contains('running')) foundStepsSensor = true;
-
           for (final characteristic in service.characteristics) {
-            final cUuid = characteristic.uuid.toString().toLowerCase();
-            if (cUuid.contains('2a37')) foundHrSensor = true;
-            if (cUuid.contains('2a35')) foundBpSensor = true;
-            if (cUuid.contains('2a5e') || cUuid.contains('spo2') || cUuid.contains('oximeter')) foundSpo2Sensor = true;
-            if (cUuid.contains('2a53') || cUuid.contains('step')) foundStepsSensor = true;
-
             if (characteristic.properties.notify || characteristic.properties.indicate) {
               await characteristic.setNotifyValue(true);
               _bleSubscription = characteristic.lastValueStream.listen((value) {
@@ -76,12 +65,6 @@ class WatchNotifier extends StateNotifier<WatchState> {
           }
         }
       } catch (_) {}
-
-      // Update hardware capability states for the connected watch
-      ref.read(hrSupportedProvider.notifier).state = foundHrSensor;
-      ref.read(bpSupportedProvider.notifier).state = foundBpSensor;
-      ref.read(spo2SupportedProvider.notifier).state = foundSpo2Sensor;
-      ref.read(stepsSupportedProvider.notifier).state = foundStepsSensor;
 
       state = state.copyWith(status: WatchConnectionStatus.connected);
       ref.read(watchConnectedProvider.notifier).state = true;
@@ -113,11 +96,6 @@ class WatchNotifier extends StateNotifier<WatchState> {
       final str = utf8.decode(bytes);
       if (str.startsWith('{') && str.endsWith('}')) {
         final Map<String, dynamic> json = jsonDecode(str);
-        if (json.containsKey('heartRate') || json.containsKey('bpm')) ref.read(hrSupportedProvider.notifier).state = true;
-        if (json.containsKey('systolic') || json.containsKey('bp')) ref.read(bpSupportedProvider.notifier).state = true;
-        if (json.containsKey('spo2') || json.containsKey('oxygen')) ref.read(spo2SupportedProvider.notifier).state = true;
-        if (json.containsKey('steps')) ref.read(stepsSupportedProvider.notifier).state = true;
-
         ref.read(healthProvider.notifier).updateFromWatch(json);
         final uid = FirebaseAuth.instance.currentUser?.uid;
         if (uid != null) {
@@ -129,7 +107,7 @@ class WatchNotifier extends StateNotifier<WatchState> {
 
     // 2. Standard GATT Heart Rate Characteristic (0x2A37)
     final isHeartRateUuid = uuid?.toLowerCase().contains('2a37') == true;
-    if (isHeartRateUuid || bytes.length <= 4) {
+    if (isHeartRateUuid) {
       int flags = bytes[0];
       bool is16Bit = (flags & 0x01) != 0;
       int bpm = 0;
@@ -139,9 +117,7 @@ class WatchNotifier extends StateNotifier<WatchState> {
         bpm = bytes[1];
       }
 
-      // Valid physiological heart rate range (40 - 240 BPM)
       if (bpm >= 40 && bpm <= 240) {
-        ref.read(hrSupportedProvider.notifier).state = true;
         final data = {'heartRate': bpm};
         ref.read(healthProvider.notifier).updateFromWatch(data);
         final uid = FirebaseAuth.instance.currentUser?.uid;
@@ -158,7 +134,6 @@ class WatchNotifier extends StateNotifier<WatchState> {
       int sys = bytes[1] | (bytes[2] << 8);
       int dia = bytes[3] | (bytes[4] << 8);
       if (sys >= 60 && sys <= 240 && dia >= 30 && dia <= 160) {
-        ref.read(bpSupportedProvider.notifier).state = true;
         final data = {'systolic': sys, 'diastolic': dia};
         ref.read(healthProvider.notifier).updateFromWatch(data);
         final uid = FirebaseAuth.instance.currentUser?.uid;
@@ -174,7 +149,6 @@ class WatchNotifier extends StateNotifier<WatchState> {
     if (isSpo2Uuid && bytes.length >= 2) {
       int ox = bytes[1];
       if (ox >= 70 && ox <= 100) {
-        ref.read(spo2SupportedProvider.notifier).state = true;
         final data = {'spo2': ox};
         ref.read(healthProvider.notifier).updateFromWatch(data);
         final uid = FirebaseAuth.instance.currentUser?.uid;
@@ -182,6 +156,32 @@ class WatchNotifier extends StateNotifier<WatchState> {
           _api.post(ApiConstants.saveReading, data).catchError((_) => <String, dynamic>{});
         }
         return;
+      }
+    }
+
+    // 5. Universal Multi-Metric Packet Parser (Supports custom smartwatch vendor protocols)
+    if (bytes.length >= 2) {
+      int possibleBpm = bytes[0];
+      int possibleSys = (bytes.length >= 3) ? bytes[1] : 0;
+      int possibleDia = (bytes.length >= 3) ? bytes[2] : 0;
+      int possibleSpo2 = (bytes.length >= 4) ? bytes[3] : 0;
+      int possibleSteps = (bytes.length >= 6) ? ((bytes[4] << 8) | bytes[5]) : 0;
+
+      final Map<String, dynamic> data = {};
+      if (possibleBpm >= 40 && possibleBpm <= 240) data['heartRate'] = possibleBpm;
+      if (possibleSys >= 60 && possibleSys <= 240 && possibleDia >= 30 && possibleDia <= 160) {
+        data['systolic'] = possibleSys;
+        data['diastolic'] = possibleDia;
+      }
+      if (possibleSpo2 >= 70 && possibleSpo2 <= 100) data['spo2'] = possibleSpo2;
+      if (possibleSteps > 0 && possibleSteps < 200000) data['steps'] = possibleSteps;
+
+      if (data.isNotEmpty) {
+        ref.read(healthProvider.notifier).updateFromWatch(data);
+        final uid = FirebaseAuth.instance.currentUser?.uid;
+        if (uid != null) {
+          _api.post(ApiConstants.saveReading, data).catchError((_) => <String, dynamic>{});
+        }
       }
     }
   }
