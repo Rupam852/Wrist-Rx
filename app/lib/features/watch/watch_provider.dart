@@ -31,6 +31,7 @@ class WatchNotifier extends StateNotifier<WatchState> {
   BluetoothDevice? _connectedDevice;
   final List<StreamSubscription> _bleSubscriptions = [];
   final List<BluetoothCharacteristic> _writeCharacteristics = [];
+  final List<BluetoothCharacteristic> _readableCharacteristics = [];
   Timer? _watchPingTimer;
   int _pingCycle = 0; // Rotating probe cycle index
 
@@ -40,6 +41,7 @@ class WatchNotifier extends StateNotifier<WatchState> {
       await device.connect(timeout: const Duration(seconds: 10));
       _connectedDevice = device;
       _writeCharacteristics.clear();
+      _readableCharacteristics.clear();
 
       final uid = FirebaseAuth.instance.currentUser?.uid;
       if (uid != null) {
@@ -67,8 +69,9 @@ class WatchNotifier extends StateNotifier<WatchState> {
               _writeCharacteristics.add(characteristic);
             }
 
-            // Read initial stored values immediately if characteristic is readable
+            // Collect readable characteristics for periodic polling & read initial values immediately
             if (characteristic.properties.read) {
+              _readableCharacteristics.add(characteristic);
               try {
                 final initialBytes = await characteristic.read();
                 if (initialBytes.isNotEmpty) {
@@ -124,6 +127,16 @@ class WatchNotifier extends StateNotifier<WatchState> {
   /// - Steps: ALWAYS (live pedometer must update every tick)
   /// - HR and SpO2: alternate each cycle to avoid flooding
   void _triggerWatchSync() async {
+    // 1. Poll readable characteristics continuously for watches that don't auto-notify
+    for (final char in _readableCharacteristics) {
+      try {
+        final val = await char.read();
+        if (val.isNotEmpty) {
+          _parseBleBytes(val, char.uuid.toString());
+        }
+      } catch (_) {}
+    }
+
     if (_writeCharacteristics.isEmpty) return;
 
     final cycle = _pingCycle % 2; // Only 2 alternating cycles now
@@ -310,7 +323,7 @@ class WatchNotifier extends StateNotifier<WatchState> {
                       effectiveCmd == 0x0B || effectiveCmd == 0x1E);
 
     int extractedSteps = 0;
-    for (int offset = 0; offset + 2 <= bytes.length; offset++) {
+    for (int offset = dataStart; offset + 2 <= bytes.length; offset++) {
       // 2-byte Little-Endian & Big-Endian
       int s2le = bytes[offset] | (bytes[offset + 1] << 8);
       int s2be = (bytes[offset] << 8) | bytes[offset + 1];
