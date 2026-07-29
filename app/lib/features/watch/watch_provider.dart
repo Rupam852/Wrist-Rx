@@ -28,7 +28,7 @@ class WatchNotifier extends StateNotifier<WatchState> {
 
   final _api = ApiService();
   BluetoothDevice? _connectedDevice;
-  StreamSubscription? _bleSubscription;
+  final List<StreamSubscription> _bleSubscriptions = [];
   Timer? _watchPingTimer;
   BluetoothCharacteristic? _writeCharacteristic;
 
@@ -56,7 +56,7 @@ class WatchNotifier extends StateNotifier<WatchState> {
       ref.read(spo2SupportedProvider.notifier).state = true;
       ref.read(stepsSupportedProvider.notifier).state = true;
 
-      // Discover BLE services & subscribe to notify/indicate characteristics
+      // Discover BLE services & subscribe to ALL notify/indicate characteristics
       try {
         final services = await device.discoverServices();
         for (final service in services) {
@@ -76,14 +76,17 @@ class WatchNotifier extends StateNotifier<WatchState> {
               } catch (_) {}
             }
 
-            // Enable Notifications / Indications
+            // Enable Notifications / Indications for ALL characteristics in parallel
             if (characteristic.properties.notify || characteristic.properties.indicate) {
-              await characteristic.setNotifyValue(true);
-              _bleSubscription = characteristic.lastValueStream.listen((value) {
-                if (value.isNotEmpty) {
-                  _parseBleBytes(value, characteristic.uuid.toString());
-                }
-              });
+              try {
+                await characteristic.setNotifyValue(true);
+                final sub = characteristic.lastValueStream.listen((value) {
+                  if (value.isNotEmpty) {
+                    _parseBleBytes(value, characteristic.uuid.toString());
+                  }
+                });
+                _bleSubscriptions.add(sub);
+              } catch (_) {}
             }
           }
         }
@@ -321,7 +324,11 @@ class WatchNotifier extends StateNotifier<WatchState> {
 
   Future<void> disconnect() async {
     _watchPingTimer?.cancel();
-    _bleSubscription?.cancel();
+    for (final sub in _bleSubscriptions) {
+      try { await sub.cancel(); } catch (_) {}
+    }
+    _bleSubscriptions.clear();
+
     await _connectedDevice?.disconnect();
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid != null) {
