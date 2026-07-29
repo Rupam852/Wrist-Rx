@@ -80,12 +80,14 @@ class UserSettings {
   final bool notifications;
   final bool sound;
   final bool haptic;
+  final bool syncCloud;
   final String aiProvider;
   final String aiModel;
   final List<EmergencyContact> emergencyContacts;
 
   UserSettings({
     this.notifications = true, this.sound = false, this.haptic = false,
+    this.syncCloud = false,
     this.aiProvider = 'gemini', this.aiModel = 'gemini-2.0-flash',
     this.emergencyContacts = const [],
   });
@@ -94,6 +96,7 @@ class UserSettings {
     notifications: json['notifications'] ?? true,
     sound: json['sound'] ?? false,
     haptic: json['haptic'] ?? false,
+    syncCloud: json['syncCloud'] ?? false,
     aiProvider: json['aiProvider'] ?? 'gemini',
     aiModel: json['aiModel'] ?? 'gemini-2.0-flash',
     emergencyContacts: (json['emergencyContacts'] as List? ?? [])
@@ -102,17 +105,19 @@ class UserSettings {
 
   Map<String, dynamic> toJson() => {
     'notifications': notifications, 'sound': sound, 'haptic': haptic,
+    'syncCloud': syncCloud,
     'aiProvider': aiProvider, 'aiModel': aiModel,
     'emergencyContacts': emergencyContacts.map((e) => e.toJson()).toList(),
   };
 
   UserSettings copyWith({
-    bool? notifications, bool? sound, bool? haptic,
+    bool? notifications, bool? sound, bool? haptic, bool? syncCloud,
     String? aiProvider, String? aiModel, List<EmergencyContact>? emergencyContacts,
   }) => UserSettings(
     notifications: notifications ?? this.notifications,
     sound: sound ?? this.sound,
     haptic: haptic ?? this.haptic,
+    syncCloud: syncCloud ?? this.syncCloud,
     aiProvider: aiProvider ?? this.aiProvider,
     aiModel: aiModel ?? this.aiModel,
     emergencyContacts: emergencyContacts ?? this.emergencyContacts,

@@ -273,10 +273,10 @@ class WatchNotifier extends StateNotifier<WatchState> {
     }
 
     final cmdByte = bytes[1];
-    // Check for longer header format: AB 00 04 FF XX
-    final cmd4 = (bytes.length >= 5 && bytes[1] == 0x00 && bytes[2] == 0x04 && bytes[3] == 0xFF) ? bytes[4] : 0x00;
-    final effectiveCmd = cmd4 != 0x00 ? cmd4 : cmdByte;
-    final dataStart = cmd4 != 0x00 ? 5 : 2;
+    // Check for longer header format: AB 00 <len> FF <cmd> (where bytes[2] is payload length)
+    final bool isLongHeader = (bytes.length >= 5 && bytes[0] == 0xAB && bytes[1] == 0x00 && bytes[3] == 0xFF);
+    final effectiveCmd = isLongHeader ? bytes[4] : cmdByte;
+    final dataStart = isLongHeader ? 5 : 2;
 
     // ── Vendor Heart Rate Response ──────────────────────────────────────────
     // Command codes: 0x0A (HR measurement), 0x09

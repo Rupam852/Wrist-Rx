@@ -34,15 +34,35 @@ async function callGemini(apiKey, model, messages) {
       res.on('end', () => {
         try {
           const parsed = JSON.parse(data);
-          const text = parsed?.candidates?.[0]?.content?.parts?.[0]?.text || 'No response from AI.';
-          resolve(text);
+          if (parsed.error) {
+            const code = parsed.error.code || res.statusCode;
+            const msg = parsed.error.message || 'Unknown API Error';
+            if (code === 400 || msg.toLowerCase().includes('api key')) {
+              return resolve(`⚠️ API Key Error (${code}): Invalid API key. Please generate a valid key at aistudio.google.com and save it in Settings.`);
+            }
+            if (code === 404 || msg.toLowerCase().includes('not found')) {
+              return resolve(`⚠️ Model Error (${code}): Model '${modelName}' not found. Please select 'gemini-2.0-flash' in Settings.`);
+            }
+            if (code === 429 || msg.toLowerCase().includes('quota')) {
+              return resolve(`⚠️ Quota Limit (${code}): Gemini API rate limit reached. Please wait a minute and try again.`);
+            }
+            return resolve(`⚠️ Gemini API Error (${code}): ${msg}`);
+          }
+          const text = parsed?.candidates?.[0]?.content?.parts?.[0]?.text;
+          if (text) {
+            resolve(text);
+          } else {
+            resolve('⚠️ No response generated. Please check your Gemini API key and prompt.');
+          }
         } catch (e) {
-          reject(new Error('Failed to parse Gemini response'));
+          resolve(`⚠️ Response Error: Failed to parse Gemini response (${e.message})`);
         }
       });
     });
 
-    req.on('error', reject);
+    req.on('error', (err) => {
+      resolve(`⚠️ Network Error: Unable to reach Gemini server (${err.message})`);
+    });
     req.write(body);
     req.end();
   });

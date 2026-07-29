@@ -46,11 +46,15 @@ class AiMessagesNotifier extends StateNotifier<List<ChatMessage>> {
         'apiKey': apiKey,
         'model': aiModel,
       });
-      final aiResponse = result['response'] as String;
-      state = [...state, ChatMessage(role: 'ai', content: aiResponse)];
+      if (result['success'] == true && result['response'] != null) {
+        state = [...state, ChatMessage(role: 'ai', content: result['response'] as String)];
+      } else {
+        final errMsg = result['message'] ?? 'Unknown backend response error';
+        state = [...state, ChatMessage(role: 'ai', content: '⚠️ Service Error: $errMsg')];
+      }
     } catch (e) {
       state = [...state,
-        ChatMessage(role: 'ai', content: 'Sorry, I encountered an error. Please try again.')
+        ChatMessage(role: 'ai', content: '⚠️ Connection Error: Unable to connect to Wrist Rx server. Please check your internet connection.')
       ];
     }
   }

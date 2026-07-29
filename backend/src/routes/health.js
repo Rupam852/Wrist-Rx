@@ -99,11 +99,13 @@ router.get('/:uid/history', authMiddleware, async (req, res) => {
   }
 });
 
-// DELETE /api/health/:uid/clean — Clean all user health data from database
+// DELETE /api/health/:uid/clean — Clean all user health data & AI chat history from database
 router.delete('/:uid/clean', authMiddleware, async (req, res) => {
   try {
+    const AiConversation = require('../models/AiConversation');
     await HealthData.deleteMany({ userId: req.params.uid });
-    res.json({ success: true, message: 'All user health data wiped successfully' });
+    await AiConversation.deleteMany({ userId: req.params.uid });
+    res.json({ success: true, message: 'All user health data and AI chat history wiped successfully' });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

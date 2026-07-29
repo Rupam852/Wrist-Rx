@@ -8,6 +8,7 @@ import '../../core/constants/api_constants.dart';
 import '../../shared/models/models.dart';
 import '../auth/auth_provider.dart';
 import '../home/health_provider.dart';
+import '../ai/ai_provider.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -80,6 +81,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       case 'haptic':
         newSettings = user.settings.copyWith(haptic: value);
         break;
+      case 'syncCloud':
+        newSettings = user.settings.copyWith(syncCloud: value);
+        break;
       default:
         return;
     }
@@ -118,10 +122,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   await api.delete(ApiConstants.cleanHealthData(uid));
                 }
                 ref.read(healthProvider.notifier).reset();
+                ref.read(aiMessagesProvider.notifier).clear();
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
-                      content: Text('✨ All health data wiped! App reset like brand new install.'),
+                      content: Text('✨ All health data & AI chat history wiped!'),
                       backgroundColor: Colors.green,
                     ),
                   );
@@ -175,6 +180,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             subtitle: 'Play audio chimes during high priority events',
             value: settings.sound,
             onChanged: (v) => _updateToggle('sound', v),
+          ),
+          _SettingsTile(
+            title: 'Sync Data on Cloud',
+            subtitle: 'Backup & sync health telemetry to cloud database (OFF by default)',
+            value: settings.syncCloud,
+            onChanged: (v) => _updateToggle('syncCloud', v),
           ),
           const SizedBox(height: 24),
 
@@ -260,13 +271,19 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 const SizedBox(height: 12),
                 SizedBox(
                   width: double.infinity,
-                  height: 46,
+                  height: 54,
                   child: FilledButton.icon(
+                    style: FilledButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                    ),
                     onPressed: _isSavingKey ? null : _saveApiKey,
                     icon: _isSavingKey
                         ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                         : const Icon(Icons.save_rounded, size: 18),
-                    label: Text(_isSavingKey ? 'Saving...' : 'Save API Key'),
+                    label: Text(
+                      _isSavingKey ? 'Saving...' : 'Save API Key',
+                      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                    ),
                   ),
                 ),
               ],
@@ -338,9 +355,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 const SizedBox(height: 14),
                 SizedBox(
                   width: double.infinity,
-                  height: 46,
+                  height: 54,
                   child: OutlinedButton.icon(
                     style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
                       side: const BorderSide(color: Colors.redAccent, width: 1.5),
                       backgroundColor: Colors.redAccent.withOpacity(0.1),
                     ),
@@ -350,7 +368,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         : const Icon(Icons.delete_forever_rounded, color: Colors.redAccent, size: 20),
                     label: Text(
                       _isCleaningData ? 'Wiping Data...' : 'Clean All My Data',
-                      style: const TextStyle(color: Colors.redAccent, fontWeight: FontWeight.w700),
+                      style: const TextStyle(color: Colors.redAccent, fontWeight: FontWeight.w700, fontSize: 15),
                     ),
                   ),
                 ),
