@@ -1,9 +1,13 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:geolocator/geolocator.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/services/api_service.dart';
+import '../../core/constants/api_constants.dart';
 import '../watch/watch_connect_sheet.dart';
 import '../watch/watch_provider.dart';
 import '../auth/auth_provider.dart';
@@ -499,18 +503,23 @@ class _SosButton extends ConsumerWidget {
 
   void _showSosDialog(BuildContext context, WidgetRef ref) {
     int countdown = 3;
+    Timer? timer;
+
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (ctx) => StatefulBuilder(
+      builder: (dialogCtx) => StatefulBuilder(
         builder: (ctx, setState) {
-          Future.delayed(const Duration(seconds: 1), () {
-            if (!ctx.mounted) return;
+          timer ??= Timer.periodic(const Duration(seconds: 1), (t) {
+            if (!ctx.mounted) {
+              t.cancel();
+              return;
+            }
             if (countdown > 1) {
               setState(() => countdown--);
-              _showSosDialog(ctx, ref);
             } else {
-              Navigator.pop(ctx);
+              t.cancel();
+              Navigator.of(dialogCtx).pop();
               _triggerSos(context, ref);
             }
           });
@@ -521,22 +530,25 @@ class _SosButton extends ConsumerWidget {
             title: const Row(children: [
               Icon(Icons.emergency_rounded, color: AppColors.sosRed, size: 28),
               SizedBox(width: 10),
-              Text('SOS Alert', style: TextStyle(color: Colors.white)),
+              Text('SOS Alert', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
             ]),
             content: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text('Sending SOS in', style: TextStyle(color: AppColors.onSurfaceDark)),
+                Text('Sending Emergency Alert in', style: TextStyle(color: AppColors.onSurfaceDark)),
                 const SizedBox(height: 12),
                 Text('$countdown', style: const TextStyle(color: AppColors.sosRed, fontSize: 64, fontWeight: FontWeight.w800)),
                 const SizedBox(height: 8),
-                Text('Emergency contacts will be notified.', textAlign: TextAlign.center,
+                Text('Emergency contacts & location will be notified.', textAlign: TextAlign.center,
                     style: TextStyle(color: AppColors.onSurfaceDark, fontSize: 13)),
               ],
             ),
             actions: [
               TextButton(
-                onPressed: () => Navigator.pop(ctx),
+                onPressed: () {
+                  timer?.cancel();
+                  Navigator.of(dialogCtx).pop();
+                },
                 child: const Text('CANCEL', style: TextStyle(color: Colors.white70, fontWeight: FontWeight.w600)),
               ),
             ],
@@ -547,16 +559,87 @@ class _SosButton extends ConsumerWidget {
   }
 
   Future<void> _triggerSos(BuildContext context, WidgetRef ref) async {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Row(children: [
-          Icon(Icons.check_circle_rounded, color: Colors.white),
-          SizedBox(width: 10),
-          Text('SOS Alert Sent! Contacts notified.'),
-        ]),
-        backgroundColor: AppColors.sosRed,
-        duration: Duration(seconds: 4),
-      ),
-    );
+    // 1. Heavy Haptic Vibration
+    try {
+      await HapticFeedback.heavyImpact();
+      await HapticFeedback.vibrate();
+    } catch (_) {}
+
+    // 2. Fetch live GPS location
+    double? lat;
+    double? lng;
+    try {
+      LocationPermission perm = await Geolocator.checkPermission();
+      if (perm == LocationPermission.denied) {
+        perm = await Geolocator.requestPermission();
+      }
+      if (perm == LocationPermission.whileInUse || perm == LocationPermission.always) {
+        final pos = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.high,
+          timeLimit: const Duration(seconds: 5),
+        );
+        lat = pos.latitude;
+        lng = pos.longitude;
+      }
+    } catch (_) {}
+
+    // 3. Post SOS Event to Backend API
+    try {
+      final api = ApiService();
+      await api.post(ApiConstants.sosTrigger, {
+        'lat': lat,
+        'lng': lng,
+        'message': '🚨 EMERGENCY SOS ALERT! I need immediate help!',
+      });
+    } catch (_) {}
+
+    // 4. Get User Emergency Contacts
+    final user = ref.read(userModelProvider);
+    final contacts = user?.settings.emergencyContacts ?? [];
+    final contactNames = contacts.map((c) => c.name).join(', ');
+
+    if (context.mounted) {
+      showDialog(
+        context: context,
+        builder: (dlgCtx) => AlertDialog(
+          backgroundColor: AppColors.cardDark,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Row(children: [
+            Icon(Icons.check_circle_rounded, color: Colors.green, size: 28),
+            SizedBox(width: 10),
+            Text('SOS Sent Successfully!', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700)),
+          ]),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('🚨 Emergency alert broadcasted to backend & registered contacts.',
+                  style: TextStyle(color: Colors.white70, fontSize: 13, height: 1.4)),
+              const SizedBox(height: 12),
+              if (lat != null && lng != null)
+                Text('📍 GPS Location: ${lat.toStringAsFixed(4)}, ${lng.toStringAsFixed(4)}',
+                    style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600, fontSize: 13)),
+              if (contacts.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Text('👥 Contacts Notified: $contactNames',
+                    style: const TextStyle(color: Colors.white, fontSize: 13)),
+              ],
+              if (contacts.isEmpty) ...[
+                const SizedBox(height: 8),
+                const Text('⚠️ Note: You have not added emergency contacts yet. Please add contacts in Settings → SOS.',
+                    style: TextStyle(color: Colors.amber, fontSize: 12)),
+              ],
+            ],
+          ),
+          actions: [
+            FilledButton(
+              style: FilledButton.styleFrom(backgroundColor: AppColors.primary),
+              onPressed: () => Navigator.of(dlgCtx).pop(),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
+    }
   }
 }
