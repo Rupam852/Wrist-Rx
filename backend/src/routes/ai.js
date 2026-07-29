@@ -6,8 +6,8 @@ const AiConversation = require('../models/AiConversation');
 const HealthData = require('../models/HealthData');
 const User = require('../models/User');
 
-// Helper: call Gemini API
-async function callGemini(apiKey, model, messages) {
+// Helper: call single Gemini API model
+async function callGeminiSingle(apiKey, model, messages) {
   const body = JSON.stringify({
     contents: messages.map((m) => ({
       role: m.role === 'ai' ? 'model' : 'user',
@@ -19,7 +19,7 @@ async function callGemini(apiKey, model, messages) {
     },
   });
 
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
     const modelName = model || 'gemini-2.0-flash';
     const options = {
       hostname: 'generativelanguage.googleapis.com',
@@ -41,10 +41,10 @@ async function callGemini(apiKey, model, messages) {
               return resolve(`⚠️ API Key Error (${code}): Invalid API key. Please generate a valid key at aistudio.google.com and save it in Settings.`);
             }
             if (code === 404 || msg.toLowerCase().includes('not found')) {
-              return resolve(`⚠️ Model Error (${code}): Model '${modelName}' not found. Please select 'gemini-2.0-flash' in Settings.`);
+              return resolve(`⚠️ Model Error (${code}): Model '${modelName}' not found.`);
             }
             if (code === 429 || msg.toLowerCase().includes('quota')) {
-              return resolve(`⚠️ Quota Limit (${code}): Gemini API rate limit reached. Please wait a minute and try again.`);
+              return resolve(`⚠️ Quota Limit (${code}): Free Gemini API rate limit reached.`);
             }
             return resolve(`⚠️ Gemini API Error (${code}): ${msg}`);
           }
@@ -66,6 +66,25 @@ async function callGemini(apiKey, model, messages) {
     req.write(body);
     req.end();
   });
+}
+
+// Helper: call Gemini API with auto fallback on 429 Quota limit
+async function callGemini(apiKey, model, messages) {
+  const primaryModel = model || 'gemini-2.0-flash';
+  let response = await callGeminiSingle(apiKey, primaryModel, messages);
+
+  // If 429 Quota limit hit, attempt auto-fallback to alternative Gemini models
+  if (response.startsWith('⚠️ Quota Limit') || response.includes('429')) {
+    const fallbackModels = ['gemini-1.5-flash', 'gemini-2.0-flash-lite', 'gemini-1.5-pro'].filter(m => m !== primaryModel);
+    for (const fbModel of fallbackModels) {
+      const fbResp = await callGeminiSingle(apiKey, fbModel, messages);
+      if (!fbResp.startsWith('⚠️ Quota Limit') && !fbResp.startsWith('⚠️ Gemini API Error') && !fbResp.startsWith('⚠️ API Key Error')) {
+        return fbResp; // Fallback model succeeded!
+      }
+    }
+    return '⚠️ Quota Limit (429): Free Gemini API rate limit reached across all models. Please wait 1 minute or generate a new free key at aistudio.google.com.';
+  }
+  return response;
 }
 
 // POST /api/ai/chat — Send message & get AI response
