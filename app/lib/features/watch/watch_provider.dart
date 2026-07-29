@@ -322,31 +322,36 @@ class WatchNotifier extends StateNotifier<WatchState> {
                       effectiveCmd == 0x01 || effectiveCmd == 0x08 ||
                       effectiveCmd == 0x0B || effectiveCmd == 0x1E);
 
-    int extractedSteps = 0;
-    for (int offset = dataStart; offset + 2 <= bytes.length; offset++) {
-      // 2-byte Little-Endian & Big-Endian
-      int s2le = bytes[offset] | (bytes[offset + 1] << 8);
-      int s2be = (bytes[offset] << 8) | bytes[offset + 1];
-      
-      if (s2le > 0 && s2le < 200000) {
-        extractedSteps = s2le;
-      } else if (s2be > 0 && s2be < 200000) {
-        extractedSteps = s2be;
+    if (isStepCmd) {
+      int extractedSteps = 0;
+
+      // Primary check at dataStart (where step count integer resides)
+      if (dataStart + 2 <= bytes.length) {
+        int s2le = bytes[dataStart] | (bytes[dataStart + 1] << 8);
+        if (s2le > 0 && s2le < 200000) {
+          extractedSteps = s2le;
+        }
       }
 
-      // 4-byte Little-Endian & Big-Endian
-      if (offset + 4 <= bytes.length) {
-        int s4le = bytes[offset] | (bytes[offset + 1] << 8) | (bytes[offset + 2] << 16) | (bytes[offset + 3] << 24);
-        int s4be = (bytes[offset] << 24) | (bytes[offset + 1] << 16) | (bytes[offset + 2] << 8) | bytes[offset + 3];
-        if (s4le > 0 && s4le < 200000) { extractedSteps = s4le; break; }
-        if (s4be > 0 && s4be < 200000) { extractedSteps = s4be; break; }
+      if (extractedSteps == 0 && dataStart + 4 <= bytes.length) {
+        int s4le = bytes[dataStart] | (bytes[dataStart + 1] << 8) | (bytes[dataStart + 2] << 16) | (bytes[dataStart + 3] << 24);
+        if (s4le > 0 && s4le < 200000) {
+          extractedSteps = s4le;
+        }
       }
-      if (extractedSteps > 0 && isStepCmd) break;
-    }
 
-    if (extractedSteps > 0) {
-      ref.read(stepsSupportedProvider.notifier).state = true;
-      _saveAndPush({'steps': extractedSteps});
+      if (extractedSteps == 0 && dataStart + 2 <= bytes.length) {
+        int s2be = (bytes[dataStart] << 8) | bytes[dataStart + 1];
+        if (s2be > 0 && s2be < 200000) {
+          extractedSteps = s2be;
+        }
+      }
+
+      if (extractedSteps > 0) {
+        ref.read(stepsSupportedProvider.notifier).state = true;
+        _saveAndPush({'steps': extractedSteps});
+        return;
+      }
       return;
     }
   }
