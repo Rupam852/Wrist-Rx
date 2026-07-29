@@ -33,13 +33,49 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
       }
+      if (permission != LocationPermission.whileInUse && permission != LocationPermission.always) {
+        return;
+      }
+
+      // Step 1: Show LAST KNOWN position instantly (no waiting for GPS satellite lock)
+      final lastPos = await Geolocator.getLastKnownPosition();
+      if (lastPos != null && mounted) {
+        ref.read(healthProvider.notifier).updateFromWatch({
+          'coordinates': {'lat': lastPos.latitude, 'lng': lastPos.longitude}
+        });
+      }
+
+      // Step 2: Get FRESH accurate GPS in background and update
+      final freshPos = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.medium,
+          timeLimit: Duration(seconds: 10),
+        ),
+      );
+      if (mounted) {
+        ref.read(healthProvider.notifier).updateFromWatch({
+          'coordinates': {'lat': freshPos.latitude, 'lng': freshPos.longitude}
+        });
+      }
+    } catch (_) {}
+  }
+
+  /// Called on pull-to-refresh — gets fresh GPS with 5s timeout so spinner doesn't hang
+  Future<void> _refreshGpsLocation() async {
+    try {
+      LocationPermission permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.whileInUse || permission == LocationPermission.always) {
         final pos = await Geolocator.getCurrentPosition(
-          locationSettings: const LocationSettings(accuracy: LocationAccuracy.medium),
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.high,
+            timeLimit: Duration(seconds: 5),
+          ),
         );
-        ref.read(healthProvider.notifier).updateFromWatch({
-          'coordinates': {'lat': pos.latitude, 'lng': pos.longitude}
-        });
+        if (mounted) {
+          ref.read(healthProvider.notifier).updateFromWatch({
+            'coordinates': {'lat': pos.latitude, 'lng': pos.longitude}
+          });
+        }
       }
     } catch (_) {}
   }
@@ -56,16 +92,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
     final isConnected = ref.watch(watchConnectedProvider);
     final isHrSupported = ref.watch(hrSupportedProvider);
     final isBpSupported = ref.watch(bpSupportedProvider);
-    final isSpo2Supported = ref.watch(spo2SupportedProvider);
     final isStepsSupported = ref.watch(stepsSupportedProvider);
     final user = ref.watch(userModelProvider);
 
     // Displays stored calculated data immediately, and updates live when watch calculates new data
     final hasHr = health.heartRate > 0;
     final hasBp = health.systolic > 0 && health.diastolic > 0;
-    final hasSpo2 = health.spo2 > 0;
-    final hasSteps = health.steps > 0;
     final hasGps = health.lat != null && health.lng != null;
+
 
     return Scaffold(
       backgroundColor: AppColors.backgroundDark,
@@ -119,7 +153,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
         color: AppColors.primary,
         backgroundColor: AppColors.cardDark,
         onRefresh: () async {
-          await ref.read(healthProvider.notifier).fetchLatestDataFromBackend();
+          // Refresh GPS location + backend data in parallel
+          await Future.wait([
+            _refreshGpsLocation(),
+            ref.read(healthProvider.notifier).fetchLatestDataFromBackend(),
+          ]);
         },
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
@@ -171,29 +209,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
                     pulseController: _pulseController,
                     smallValue: isConnected && !isBpSupported,
                   ),
-                  // 3. Blood Oxygen SpO2 %
-                  _MetricCard(
-                    gradient: AppColors.spo2Gradient,
-                    icon: Icons.air_rounded,
-                    title: 'Blood Oxygen (SpO2)',
-                    value: (isConnected && !isSpo2Supported)
-                        ? 'N/A'
-                        : (hasSpo2 ? '${health.spo2.round()}%' : '--%'),
-                    unit: (isConnected && !isSpo2Supported) ? 'Not supported on watch' : 'Oxygen Saturation',
-                    isPulsing: isConnected && hasSpo2 && isSpo2Supported,
-                    pulseController: _pulseController,
-                    smallValue: isConnected && !isSpo2Supported,
-                  ),
-                  // 4. Steps Pedometer
+                  // 3. Steps Pedometer
                   _MetricCard(
                     gradient: AppColors.stepsGradient,
                     icon: Icons.directions_walk_rounded,
                     title: 'Steps Pedometer',
                     value: (isConnected && !isStepsSupported)
                         ? 'N/A'
-                        : (hasSteps ? _formatSteps(health.steps) : (isConnected ? '0' : '--')),
+                        : _formatSteps(health.steps),
                     unit: (isConnected && !isStepsSupported) ? 'Not supported on watch' : 'steps',
-                    isPulsing: isConnected && hasSteps && isStepsSupported,
+                    isPulsing: isConnected && isStepsSupported,
                     pulseController: _pulseController,
                     smallValue: isConnected && !isStepsSupported,
                   ),

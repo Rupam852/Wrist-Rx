@@ -148,7 +148,6 @@ class HealthReading {
   final double heartRate;
   final double systolic;
   final double diastolic;
-  final double spo2;
   final int steps;
   final double? lat;
   final double? lng;
@@ -156,7 +155,7 @@ class HealthReading {
 
   HealthReading({
     this.heartRate = 0, this.systolic = 0, this.diastolic = 0,
-    this.spo2 = 0, this.steps = 0, this.lat, this.lng, DateTime? timestamp,
+    this.steps = 0, this.lat, this.lng, DateTime? timestamp,
   }) : timestamp = timestamp ?? DateTime.now();
 
   static final empty = HealthReading();
@@ -165,7 +164,6 @@ class HealthReading {
     heartRate: (json['heartRate'] ?? json['bpm'] ?? 0).toDouble(),
     systolic: (json['systolic'] ?? json['sys'] ?? 0).toDouble(),
     diastolic: (json['diastolic'] ?? json['dia'] ?? 0).toDouble(),
-    spo2: (json['spo2'] ?? json['oxygen'] ?? json['bloodOxygen'] ?? 0).toDouble(),
     steps: json['steps'] ?? 0,
     lat: json['coordinates']?['lat']?.toDouble(),
     lng: json['coordinates']?['lng']?.toDouble(),
@@ -176,7 +174,6 @@ class HealthReading {
     'heartRate': heartRate,
     'systolic': systolic,
     'diastolic': diastolic,
-    'spo2': spo2,
     'steps': steps,
     'coordinates': {'lat': lat, 'lng': lng},
     'timestamp': timestamp.toIso8601String(),

@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/services/api_service.dart';
+import '../../core/services/foreground_service.dart';
 import '../../core/constants/api_constants.dart';
 import '../home/health_provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -29,41 +30,41 @@ class WatchNotifier extends StateNotifier<WatchState> {
   final _api = ApiService();
   BluetoothDevice? _connectedDevice;
   final List<StreamSubscription> _bleSubscriptions = [];
+  final List<BluetoothCharacteristic> _writeCharacteristics = [];
   Timer? _watchPingTimer;
-  BluetoothCharacteristic? _writeCharacteristic;
+  int _pingCycle = 0; // Rotating probe cycle index
 
   Future<void> connectViaBluetooth(BluetoothDevice device) async {
     state = state.copyWith(status: WatchConnectionStatus.connecting, deviceName: device.platformName);
     try {
       await device.connect(timeout: const Duration(seconds: 10));
       _connectedDevice = device;
+      _writeCharacteristics.clear();
 
       final uid = FirebaseAuth.instance.currentUser?.uid;
       if (uid != null) {
         try {
           await _api.post(ApiConstants.connectBluetooth, {'macAddress': device.remoteId.str});
-          // Auto wipe old stored telemetry for clean fresh watch session
-          await _api.delete(ApiConstants.cleanHealthData(uid));
         } catch (_) {}
       }
 
-      // Reset state for clean fresh start with newly connected watch
-      ref.read(healthProvider.notifier).reset();
+      // Sync pre-existing app step baseline before receiving live watch telemetry
+      ref.read(healthProvider.notifier).syncWatchBaseline();
 
       // Open all hardware metric capabilities by default
       ref.read(hrSupportedProvider.notifier).state = true;
       ref.read(bpSupportedProvider.notifier).state = true;
-      ref.read(spo2SupportedProvider.notifier).state = true;
       ref.read(stepsSupportedProvider.notifier).state = true;
 
-      // Discover BLE services & subscribe to ALL notify/indicate characteristics
+
+      // Discover BLE services & subscribe to ALL notify/indicate characteristics continuously
       try {
         final services = await device.discoverServices();
         for (final service in services) {
           for (final characteristic in service.characteristics) {
-            // Save write characteristic for active sync pings
+            // Collect ALL writable characteristics for parallel command probes
             if (characteristic.properties.write || characteristic.properties.writeWithoutResponse) {
-              _writeCharacteristic = characteristic;
+              _writeCharacteristics.add(characteristic);
             }
 
             // Read initial stored values immediately if characteristic is readable
@@ -76,33 +77,32 @@ class WatchNotifier extends StateNotifier<WatchState> {
               } catch (_) {}
             }
 
-            // Enable Notifications / Indications for ALL characteristics in parallel
+            // Enable Notifications / Indications - use onValueReceived only (no duplicate lastValueStream)
             if (characteristic.properties.notify || characteristic.properties.indicate) {
               try {
                 await characteristic.setNotifyValue(true);
-                final sub1 = characteristic.onValueReceived.listen((value) {
-                  if (value.isNotEmpty) {
-                    _parseBleBytes(value, characteristic.uuid.toString());
-                  }
-                });
-                final sub2 = characteristic.lastValueStream.listen((value) {
-                  if (value.isNotEmpty) {
-                    _parseBleBytes(value, characteristic.uuid.toString());
-                  }
-                });
-                _bleSubscriptions.add(sub1);
-                _bleSubscriptions.add(sub2);
+                final sub = characteristic.onValueReceived.listen(
+                  (value) {
+                    if (value.isNotEmpty) {
+                      _parseBleBytes(value, characteristic.uuid.toString());
+                    }
+                  },
+                  onError: (_) {},
+                  cancelOnError: false, // Never cancel stream on byte parsing error!
+                );
+                _bleSubscriptions.add(sub);
               } catch (_) {}
             }
           }
         }
       } catch (_) {}
 
-      // Send multi-probe sync commands immediately to pull latest steps, HR, and SpO2 from watch memory
+      // Send initial sync commands immediately to pull latest steps, HR, and SpO2 from watch memory
       _triggerWatchSync();
 
-      // Start 3-second continuous sync ping loop for real-time SpO2, HR, and Step streaming
+      // Start non-stopping 3-second rotating probe sync - avoids flooding the watch
       _watchPingTimer?.cancel();
+      _pingCycle = 0;
       _watchPingTimer = Timer.periodic(const Duration(seconds: 3), (_) {
         _triggerWatchSync();
       });
@@ -110,34 +110,54 @@ class WatchNotifier extends StateNotifier<WatchState> {
       state = state.copyWith(status: WatchConnectionStatus.connected);
       ref.read(watchConnectedProvider.notifier).state = true;
       ref.read(healthProvider.notifier).startContinuousSync();
+
+      // Start foreground service to keep BLE connection alive in background/when app closed
+      WatchForegroundService().start(watchName: device.platformName).catchError((_) => null);
     } catch (e) {
       state = state.copyWith(status: WatchConnectionStatus.disconnected, error: e.toString());
     }
   }
 
+  /// Sends smart sync probes every cycle:
+  /// - Steps: ALWAYS (live pedometer must update every tick)
+  /// - HR and SpO2: alternate each cycle to avoid flooding
   void _triggerWatchSync() async {
-    if (_writeCharacteristic == null) return;
-    try {
-      final noResp = _writeCharacteristic!.properties.writeWithoutResponse;
-      // General Telemetry Sync
-      await _writeCharacteristic!.write([0xAB, 0x00, 0x04, 0xFF, 0x31], withoutResponse: noResp);
-      // SpO2 Blood Oxygen Active Measurement Probes (5-byte, 3-byte, & direct byte protocol variants)
-      await _writeCharacteristic!.write([0xAB, 0x00, 0x04, 0xFF, 0x12], withoutResponse: noResp);
-      await _writeCharacteristic!.write([0xAB, 0x00, 0x04, 0xFF, 0x11], withoutResponse: noResp);
-      await _writeCharacteristic!.write([0xAB, 0x00, 0x04, 0xFF, 0x53], withoutResponse: noResp);
-      await _writeCharacteristic!.write([0xAB, 0x12], withoutResponse: noResp);
-      await _writeCharacteristic!.write([0xAB, 0x11], withoutResponse: noResp);
-      await _writeCharacteristic!.write([0x55, 0x12], withoutResponse: noResp);
-      await _writeCharacteristic!.write([0x55, 0x11], withoutResponse: noResp);
-      // Heart Rate Probes
-      await _writeCharacteristic!.write([0xAB, 0x00, 0x04, 0xFF, 0x52], withoutResponse: noResp);
-      await _writeCharacteristic!.write([0xAB, 0x0A], withoutResponse: noResp);
-      await _writeCharacteristic!.write([0x55, 0x0A], withoutResponse: noResp);
-      // Pedometer / Steps Probes
-      await _writeCharacteristic!.write([0xAB, 0x00, 0x04, 0xFF, 0x51], withoutResponse: noResp);
-      await _writeCharacteristic!.write([0x55, 0x01], withoutResponse: noResp);
-      await _writeCharacteristic!.write([0x55, 0x02], withoutResponse: noResp);
-    } catch (_) {}
+    if (_writeCharacteristics.isEmpty) return;
+
+    final cycle = _pingCycle % 2; // Only 2 alternating cycles now
+    _pingCycle++;
+
+    for (final char in _writeCharacteristics) {
+      try {
+        final noResp = char.properties.writeWithoutResponse;
+
+        // ── ALWAYS: General sync + Steps (live pedometer every tick) ──
+        char.write([0xAB, 0x00, 0x04, 0xFF, 0x31], withoutResponse: noResp).catchError((_) => null);
+        char.write([0xAB, 0x00, 0x04, 0xFF, 0x51], withoutResponse: noResp).catchError((_) => null);
+        char.write([0x55, 0x01], withoutResponse: noResp).catchError((_) => null);
+        char.write([0x55, 0x02], withoutResponse: noResp).catchError((_) => null);
+
+        if (cycle == 0) {
+          // Heart Rate probe cycle
+          char.write([0xAB, 0x00, 0x04, 0xFF, 0x52], withoutResponse: noResp).catchError((_) => null);
+          char.write([0xAB, 0x0A], withoutResponse: noResp).catchError((_) => null);
+          char.write([0x55, 0x0A], withoutResponse: noResp).catchError((_) => null);
+        } else {
+          // SpO2 Blood Oxygen probe cycle - covers all known SpO2 command codes
+          char.write([0xAB, 0x00, 0x04, 0xFF, 0x12], withoutResponse: noResp).catchError((_) => null);
+          char.write([0xAB, 0x00, 0x04, 0xFF, 0x11], withoutResponse: noResp).catchError((_) => null);
+          char.write([0xAB, 0x00, 0x04, 0xFF, 0x53], withoutResponse: noResp).catchError((_) => null);
+          char.write([0xAB, 0x12], withoutResponse: noResp).catchError((_) => null);
+          char.write([0xAB, 0x11], withoutResponse: noResp).catchError((_) => null);
+          char.write([0x55, 0x12], withoutResponse: noResp).catchError((_) => null);
+          char.write([0x55, 0x11], withoutResponse: noResp).catchError((_) => null);
+          // Additional SpO2 codes used by many Chinese OEM watches
+          char.write([0xAB, 0x18], withoutResponse: noResp).catchError((_) => null);
+          char.write([0xAB, 0x1B], withoutResponse: noResp).catchError((_) => null);
+          char.write([0x55, 0x18], withoutResponse: noResp).catchError((_) => null);
+        }
+      } catch (_) {}
+    }
   }
 
   Future<bool> connectViaToken(String token) async {
@@ -145,11 +165,7 @@ class WatchNotifier extends StateNotifier<WatchState> {
     try {
       await _api.post(ApiConstants.connectToken, {'token': token});
 
-      final uid = FirebaseAuth.instance.currentUser?.uid;
-      if (uid != null) {
-        try { await _api.delete(ApiConstants.cleanHealthData(uid)); } catch (_) {}
-      }
-      ref.read(healthProvider.notifier).reset();
+      ref.read(healthProvider.notifier).syncWatchBaseline();
 
       state = state.copyWith(status: WatchConnectionStatus.connected, deviceName: 'Watch (Token)');
       ref.read(watchConnectedProvider.notifier).state = true;
@@ -164,7 +180,7 @@ class WatchNotifier extends StateNotifier<WatchState> {
   void _parseBleBytes(List<int> bytes, [String? uuid]) {
     if (bytes.isEmpty) return;
 
-    // 1. JSON String Packet Parser
+    // 1. JSON String Packet Parser (highest priority)
     try {
       final str = utf8.decode(bytes);
       if (str.startsWith('{') && str.endsWith('}')) {
@@ -176,130 +192,49 @@ class WatchNotifier extends StateNotifier<WatchState> {
 
     final u = uuid?.toLowerCase() ?? '';
 
-    // 2. Universal SpO2 Blood Oxygen Detector
-    bool isSpO2Packet = u.contains('2a5e') || u.contains('2a5f') || u.contains('2a60') ||
-                        u.contains('1822') || u.contains('spo2') || u.contains('oximeter') || u.contains('oxygen');
+    // ── PRIORITY 1: Standard GATT Characteristics by UUID ──────────────────
 
-    if (!isSpO2Packet) {
-      for (int i = 0; i < bytes.length; i++) {
-        int b = bytes[i];
-        if (b == 0x12 || b == 0x11 || b == 0x0C || b == 0x27 || b == 0x53 || b == 0x1B || b == 0x18 || b == 0x28) {
-          isSpO2Packet = true;
-          break;
+    // Standard GATT Heart Rate Measurement (0x2A37 / service 0x180D)
+    if (u.contains('2a37') || u.contains('180d')) {
+      if (bytes.length >= 2) {
+        int flags = bytes[0];
+        bool is16Bit = (flags & 0x01) != 0;
+        int bpm = 0;
+        if (is16Bit && bytes.length >= 3) {
+          bpm = bytes[1] | (bytes[2] << 8);
+        } else {
+          bpm = bytes[1];
         }
-      }
-    }
-
-    if (isSpO2Packet) {
-      for (int i = 0; i < bytes.length; i++) {
-        int ox = bytes[i];
-        // Exclude command bytes 0x12, 0x11, 0x53, 0x1B from being treated as ox value if length > 1
-        if (ox >= 70 && ox <= 100) {
-          ref.read(spo2SupportedProvider.notifier).state = true;
-          _saveAndPush({'spo2': ox});
+        if (bpm >= 40 && bpm <= 240) {
+          ref.read(hrSupportedProvider.notifier).state = true;
+          _saveAndPush({'heartRate': bpm});
           return;
         }
       }
+      return; // This UUID is HR - don't fall through to SpO2 parser
     }
 
-    // 3. Standard GATT Heart Rate Characteristic (0x2A37 / 0x180D)
-    if (u.contains('2a37') || u.contains('180d')) {
-      int flags = bytes[0];
-      bool is16Bit = (flags & 0x01) != 0;
-      int bpm = 0;
-      if (is16Bit && bytes.length >= 3) {
-        bpm = bytes[1] | (bytes[2] << 8);
-      } else if (bytes.length >= 2) {
-        bpm = bytes[1];
-      }
-
-      if (bpm >= 40 && bpm <= 240) {
-        ref.read(hrSupportedProvider.notifier).state = true;
-        _saveAndPush({'heartRate': bpm});
-        return;
-      }
-    }
-
-    // 4. Standard GATT Blood Pressure Measurement (0x2A35 / 0x1810)
-    if ((u.contains('2a35') || u.contains('1810')) && bytes.length >= 5) {
-      int sys = bytes[1] | (bytes[2] << 8);
-      int dia = bytes[3] | (bytes[4] << 8);
-      if (sys >= 60 && sys <= 240 && dia >= 30 && dia <= 160) {
-        ref.read(bpSupportedProvider.notifier).state = true;
-        _saveAndPush({'systolic': sys, 'diastolic': dia});
-        return;
-      }
-    }
-
-    // 5. Standard GATT RSC / Pedometer Step Count (0x2A53 / 0x1814)
-    if ((u.contains('2a53') || u.contains('1814') || u.contains('pedometer') || u.contains('step')) && bytes.length >= 3) {
-      int steps = bytes[1] | (bytes[2] << 8);
+    // Standard GATT Blood Pressure Measurement (0x2A35 / service 0x1810)
+    if (u.contains('2a35') || u.contains('1810')) {
       if (bytes.length >= 5) {
-        steps = bytes[1] | (bytes[2] << 8) | (bytes[3] << 16) | (bytes[4] << 24);
-      }
-      if (steps > 0 && steps < 200000) {
-        ref.read(stepsSupportedProvider.notifier).state = true;
-        _saveAndPush({'steps': steps});
-        return;
-      }
-    }
-
-    // 6. Header-Prefixed Smartwatch Vendor Protocol Parser
-    final firstByte = bytes[0];
-    if (firstByte == 0xAB || firstByte == 0x55 || firstByte == 0xAA || firstByte == 0xFA || firstByte == 0xFC || firstByte == 0x7C || firstByte == 0x00) {
-
-      // Heart Rate Command Code at ANY position in header bytes [1..min(4, length-1)]
-      bool isHRCmd = false;
-      for (int i = 1; i < bytes.length && i <= 4; i++) {
-        int c = bytes[i];
-        if (c == 0x0A || c == 0x09 || c == 0x51 || c == 0x14 || c == 0x08) {
-          isHRCmd = true;
-          break;
-        }
-      }
-
-      if (isHRCmd && bytes.length >= 3) {
-        for (int i = 2; i < bytes.length; i++) {
-          int bpm = bytes[i];
-          if (bpm >= 40 && bpm <= 240) {
-            ref.read(hrSupportedProvider.notifier).state = true;
-            _saveAndPush({'heartRate': bpm});
-            return;
-          }
-        }
-      }
-
-      // Blood Pressure Command Code
-      bool isBPCmd = false;
-      for (int i = 1; i < bytes.length && i <= 4; i++) {
-        if (bytes[i] == 0x52) { isBPCmd = true; break; }
-      }
-
-      if (isBPCmd && bytes.length >= 4) {
-        int sys = bytes[bytes.length >= 5 ? 3 : 2];
-        int dia = bytes[bytes.length >= 5 ? 4 : 3];
+        int sys = bytes[1] | (bytes[2] << 8);
+        int dia = bytes[3] | (bytes[4] << 8);
         if (sys >= 60 && sys <= 240 && dia >= 30 && dia <= 160) {
           ref.read(bpSupportedProvider.notifier).state = true;
           _saveAndPush({'systolic': sys, 'diastolic': dia});
           return;
         }
       }
+      return; // This UUID is BP - don't fall through
+    }
 
-      // Pedometer Steps Command Code
-      bool isStepCmd = false;
-      for (int i = 1; i < bytes.length && i <= 4; i++) {
-        int c = bytes[i];
-        if (c == 0x02 || c == 0x07 || c == 0x31) {
-          isStepCmd = true;
-          break;
-        }
-      }
-
-      if (isStepCmd && bytes.length >= 4) {
-        int startIdx = bytes.length >= 6 ? 3 : 2;
-        int steps = (bytes[startIdx] << 8) | bytes[startIdx + 1];
-        if (bytes.length >= startIdx + 4) {
-          steps = (bytes[startIdx] << 24) | (bytes[startIdx + 1] << 16) | (bytes[startIdx + 2] << 8) | bytes[startIdx + 3];
+    // Standard GATT RSC / Step Counter (0x2A53 / service 0x1814, 0x2A56 pedometer)
+    if (u.contains('2a53') || u.contains('1814') || u.contains('2a56') ||
+        u.contains('pedometer') || u.contains('step')) {
+      if (bytes.length >= 3) {
+        int steps = bytes[1] | (bytes[2] << 8);
+        if (bytes.length >= 5) {
+          steps = bytes[1] | (bytes[2] << 8) | (bytes[3] << 16) | (bytes[4] << 24);
         }
         if (steps > 0 && steps < 200000) {
           ref.read(stepsSupportedProvider.notifier).state = true;
@@ -307,8 +242,103 @@ class WatchNotifier extends StateNotifier<WatchState> {
           return;
         }
       }
+      return; // This UUID is Steps - don't fall through
+    }
+
+    // ── PRIORITY 2: Vendor/Proprietary Protocol by Header Byte ─────────────
+
+    if (bytes.length < 2) return;
+    final firstByte = bytes[0];
+
+    // Only process known vendor protocol headers
+    if (firstByte != 0xAB && firstByte != 0x55 && firstByte != 0xAA &&
+        firstByte != 0xFA && firstByte != 0xFC && firstByte != 0x7C) {
+      return;
+    }
+
+    final cmdByte = bytes[1];
+    // Check for longer header format: AB 00 04 FF XX
+    final cmd4 = (bytes.length >= 5 && bytes[1] == 0x00 && bytes[2] == 0x04 && bytes[3] == 0xFF) ? bytes[4] : 0x00;
+    final effectiveCmd = cmd4 != 0x00 ? cmd4 : cmdByte;
+    final dataStart = cmd4 != 0x00 ? 5 : 2;
+
+    // ── Vendor Heart Rate Response ──────────────────────────────────────────
+    // Command codes: 0x0A (HR measurement), 0x09
+    // NOTE: 0x51 is NOT here — 0x51 is a STEPS response code (we use it as steps probe)
+    if (effectiveCmd == 0x0A || effectiveCmd == 0x09) {
+      for (int i = dataStart; i < bytes.length; i++) {
+        int bpm = bytes[i];
+        if (bpm >= 40 && bpm <= 240) {
+          ref.read(hrSupportedProvider.notifier).state = true;
+          _saveAndPush({'heartRate': bpm});
+          return;
+        }
+      }
+      return; // HR packet - done
+    }
+
+    // ── Vendor Blood Pressure Response ─────────────────────────────────────
+    // Command code: 0x52
+    if (effectiveCmd == 0x52) {
+      if (bytes.length >= dataStart + 2) {
+        int sys = bytes[dataStart];
+        int dia = bytes[dataStart + 1];
+        if (sys >= 60 && sys <= 240 && dia >= 30 && dia <= 160) {
+          ref.read(bpSupportedProvider.notifier).state = true;
+          _saveAndPush({'systolic': sys, 'diastolic': dia});
+          return;
+        }
+      }
+      return;
+    }
+
+    // ── Vendor Pedometer/Steps Response ────────────────────────────────────
+    // Command codes: 0x02, 0x07, 0x31, 0x51 (steps probe response)
+    // IMPORTANT: Parse as LITTLE-ENDIAN (standard for Chinese OEM BLE watches)
+    if (effectiveCmd == 0x02 || effectiveCmd == 0x07 || effectiveCmd == 0x31 || effectiveCmd == 0x51) {
+      if (bytes.length >= dataStart + 1) {
+        int steps = bytes[dataStart]; // 1-byte steps (small count)
+        if (bytes.length >= dataStart + 2) {
+          // 2-byte little-endian
+          steps = bytes[dataStart] | (bytes[dataStart + 1] << 8);
+        }
+        if (bytes.length >= dataStart + 4) {
+          // 4-byte little-endian (most common)
+          steps = bytes[dataStart] |
+                  (bytes[dataStart + 1] << 8) |
+                  (bytes[dataStart + 2] << 16) |
+                  (bytes[dataStart + 3] << 24);
+        }
+        if (steps > 0 && steps < 200000) {
+          ref.read(stepsSupportedProvider.notifier).state = true;
+          _saveAndPush({'steps': steps});
+          return;
+        }
+      }
+      return;
+    }
+
+    // ── Unknown Vendor Packet Fallback ─────────────────────────────────────
+    // For unrecognized command codes - try to extract steps (little-endian)
+    if (bytes.length >= dataStart + 2) {
+      // Little-endian 2-byte
+      int steps2 = bytes[dataStart] | (bytes[dataStart + 1] << 8);
+      int steps4 = steps2;
+      if (bytes.length >= dataStart + 4) {
+        steps4 = bytes[dataStart] |
+                 (bytes[dataStart + 1] << 8) |
+                 (bytes[dataStart + 2] << 16) |
+                 (bytes[dataStart + 3] << 24);
+      }
+      final steps = bytes.length >= dataStart + 4 ? steps4 : steps2;
+      if (steps > 0 && steps < 100000) {
+        ref.read(stepsSupportedProvider.notifier).state = true;
+        _saveAndPush({'steps': steps});
+        return;
+      }
     }
   }
+
 
   /// Merges single metric update into full HealthReading and saves complete reading to backend database
   void _saveAndPush(Map<String, dynamic> data) {
@@ -326,6 +356,7 @@ class WatchNotifier extends StateNotifier<WatchState> {
       try { await sub.cancel(); } catch (_) {}
     }
     _bleSubscriptions.clear();
+    _writeCharacteristics.clear();
 
     await _connectedDevice?.disconnect();
     final uid = FirebaseAuth.instance.currentUser?.uid;
@@ -333,13 +364,14 @@ class WatchNotifier extends StateNotifier<WatchState> {
       try { await _api.post(ApiConstants.disconnectWatch(uid), {}); } catch (_) {}
     }
     _connectedDevice = null;
-    _writeCharacteristic = null;
     ref.read(healthProvider.notifier).reset();
     ref.read(watchConnectedProvider.notifier).state = false;
     ref.read(hrSupportedProvider.notifier).state = true;
     ref.read(bpSupportedProvider.notifier).state = true;
-    ref.read(spo2SupportedProvider.notifier).state = true;
     ref.read(stepsSupportedProvider.notifier).state = true;
     state = WatchState();
+
+    // Stop foreground service - watch disconnected
+    WatchForegroundService().stop().catchError((_) => null);
   }
 }

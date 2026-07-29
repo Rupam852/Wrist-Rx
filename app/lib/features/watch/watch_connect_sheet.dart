@@ -170,19 +170,19 @@ class _BluetoothTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
       child: Column(
         children: [
           if (isScanning)
             Column(children: [
-              const SizedBox(height: 20),
+              const SizedBox(height: 16),
               SizedBox(width: 60, height: 60,
                 child: Stack(alignment: Alignment.center, children: [
                   ...List.generate(3, (i) => Container(
                     width: 20.0 + i * 20,
                     height: 20.0 + i * 20,
                     decoration: BoxDecoration(
-                      border: Border.all(color: AppColors.primary.withOpacity(0.4 - i * 0.1), width: 2),
+                      border: Border.all(color: AppColors.primary.withValues(alpha: 0.4 - i * 0.1), width: 2),
                       shape: BoxShape.circle,
                     ),
                   ).animate(onPlay: (c) => c.repeat())
@@ -190,72 +190,77 @@ class _BluetoothTab extends StatelessWidget {
                     .fadeOut(duration: 1.seconds)),
                   const Icon(Icons.bluetooth_searching_rounded, color: AppColors.primary, size: 24),
                 ])),
-              const SizedBox(height: 12),
+              const SizedBox(height: 10),
               const Text('Scanning for devices...', style: TextStyle(color: Colors.white70)),
-              const SizedBox(height: 20),
+              const SizedBox(height: 16),
             ]),
-          if (scanResults.isEmpty && !isScanning)
-            Expanded(
-              child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                Icon(Icons.bluetooth_disabled_rounded, color: AppColors.onSurfaceDark, size: 64),
-                const SizedBox(height: 16),
-                Text('No devices found', style: TextStyle(color: AppColors.onSurfaceDark, fontSize: 16)),
-                const SizedBox(height: 8),
-                Text('Make sure your watch is nearby\nand Bluetooth is enabled',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: AppColors.onSurfaceDark.withOpacity(0.7), fontSize: 13)),
-              ]),
-            ),
-          ...scanResults.map((r) {
-            final isConnectingThis = connectingDeviceId == r.device.remoteId.str;
-            final isConnectingAny = connectingDeviceId != null;
-
-            return Container(
-              margin: const EdgeInsets.only(bottom: 8),
-              decoration: BoxDecoration(
-                color: AppColors.cardDark,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(
-                  color: isConnectingThis ? AppColors.primary : Colors.white.withOpacity(0.07),
-                  width: isConnectingThis ? 1.5 : 1.0,
-                ),
-              ),
-              child: ListTile(
-                leading: Container(
-                  width: 44, height: 44,
-                  decoration: BoxDecoration(color: AppColors.primary.withOpacity(0.15), borderRadius: BorderRadius.circular(12)),
-                  child: const Icon(Icons.watch_rounded, color: AppColors.primary),
-                ),
-                title: Text(r.device.platformName, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500)),
-                subtitle: Text(
-                  isConnectingThis ? 'Connecting via Bluetooth...' : r.device.remoteId.str,
-                  style: TextStyle(
-                    color: isConnectingThis ? AppColors.primary : AppColors.onSurfaceDark,
-                    fontSize: 12,
-                    fontWeight: isConnectingThis ? FontWeight.w600 : FontWeight.normal,
+          // Device list - scrollable
+          Expanded(
+            child: scanResults.isEmpty && !isScanning
+                ? Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                    Icon(Icons.bluetooth_disabled_rounded, color: AppColors.onSurfaceDark, size: 64),
+                    const SizedBox(height: 16),
+                    Text('No devices found', style: TextStyle(color: AppColors.onSurfaceDark, fontSize: 16)),
+                    const SizedBox(height: 8),
+                    Text('Make sure your watch is nearby\nand Bluetooth is enabled',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: AppColors.onSurfaceDark.withValues(alpha: 0.7), fontSize: 13)),
+                  ])
+                : ListView.builder(
+                    physics: const BouncingScrollPhysics(),
+                    itemCount: scanResults.length,
+                    itemBuilder: (context, index) {
+                      final r = scanResults[index];
+                      final isConnectingThis = connectingDeviceId == r.device.remoteId.str;
+                      final isConnectingAny = connectingDeviceId != null;
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        decoration: BoxDecoration(
+                          color: AppColors.cardDark,
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: isConnectingThis ? AppColors.primary : Colors.white.withValues(alpha: 0.07),
+                            width: isConnectingThis ? 1.5 : 1.0,
+                          ),
+                        ),
+                        child: ListTile(
+                          leading: Container(
+                            width: 44, height: 44,
+                            decoration: BoxDecoration(color: AppColors.primary.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(12)),
+                            child: const Icon(Icons.watch_rounded, color: AppColors.primary),
+                          ),
+                          title: Text(r.device.platformName, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500)),
+                          subtitle: Text(
+                            isConnectingThis ? 'Connecting via Bluetooth...' : r.device.remoteId.str,
+                            style: TextStyle(
+                              color: isConnectingThis ? AppColors.primary : AppColors.onSurfaceDark,
+                              fontSize: 12,
+                              fontWeight: isConnectingThis ? FontWeight.w600 : FontWeight.normal,
+                            ),
+                          ),
+                          trailing: FilledButton(
+                            onPressed: isConnectingAny ? null : () => onConnect(r.device),
+                            style: FilledButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                              backgroundColor: isConnectingThis ? AppColors.primaryContainer : null,
+                            ),
+                            child: isConnectingThis
+                                ? const Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary)),
+                                      SizedBox(width: 8),
+                                      Text('Connecting...', style: TextStyle(fontSize: 12, color: AppColors.primary)),
+                                    ],
+                                  )
+                                : const Text('Connect', style: TextStyle(fontSize: 13)),
+                          ),
+                        ),
+                      );
+                    },
                   ),
-                ),
-                trailing: FilledButton(
-                  onPressed: isConnectingAny ? null : () => onConnect(r.device),
-                  style: FilledButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                    backgroundColor: isConnectingThis ? AppColors.primaryContainer : null,
-                  ),
-                  child: isConnectingThis
-                      ? const Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary)),
-                            SizedBox(width: 8),
-                            Text('Connecting...', style: TextStyle(fontSize: 12, color: AppColors.primary)),
-                          ],
-                        )
-                      : const Text('Connect', style: TextStyle(fontSize: 13)),
-                ),
-              ),
-            );
-          }),
-          const Spacer(),
+          ),
+          const SizedBox(height: 12),
           SizedBox(
             width: double.infinity,
             height: 52,
@@ -267,6 +272,7 @@ class _BluetoothTab extends StatelessWidget {
               label: Text(isScanning ? 'Scanning...' : 'Scan for Devices'),
             ),
           ),
+          const SizedBox(height: 4),
         ],
       ),
     );
