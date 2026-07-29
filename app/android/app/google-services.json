@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "353387646546",
+    "project_id": "wrist-rx",
+    "storage_bucket": "wrist-rx.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:353387646546:android:7d6951c4ca5eb0b62ad98b",
+        "android_client_info": {
+          "package_name": "com.wristrx.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "353387646546-spbe1uskor8lig8vmq1cv1oufsm1njhj.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.wristrx.app",
+            "certificate_hash": "6877d892a467656bd4dc4e89341d6f6e064bf368"
+          }
+        },
+        {
+          "client_id": "353387646546-qit3j8leklkifbjgaqq5srps7nie3b3n.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAUnGm_UpkFsdyXe-gpdmU7Hku_cMrxbwk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "353387646546-qit3j8leklkifbjgaqq5srps7nie3b3n.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

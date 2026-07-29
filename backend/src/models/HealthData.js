@@ -5,6 +5,7 @@ const readingSchema = new mongoose.Schema({
   heartRate: { type: Number, default: 0 },      // BPM
   systolic: { type: Number, default: 0 },        // mmHg
   diastolic: { type: Number, default: 0 },       // mmHg
+  spo2: { type: Number, default: 0 },            // Blood Oxygen %
   steps: { type: Number, default: 0 },
   coordinates: {
     lat: { type: Number, default: null },
@@ -24,6 +25,7 @@ const healthDataSchema = new mongoose.Schema(
       totalSteps: { type: Number, default: 0 },
       avgSystolic: { type: Number, default: 0 },
       avgDiastolic: { type: Number, default: 0 },
+      avgSpo2: { type: Number, default: 0 },
     },
     resetAt: { type: Date, default: null },
   },
