@@ -40,8 +40,13 @@ class WatchNotifier extends StateNotifier<WatchState> {
       if (uid != null) {
         try {
           await _api.post(ApiConstants.connectBluetooth, {'macAddress': device.remoteId.str});
+          // Auto wipe old stored telemetry for clean fresh watch session
+          await _api.delete(ApiConstants.cleanHealthData(uid));
         } catch (_) {}
       }
+
+      // Reset state for clean fresh start with newly connected watch
+      ref.read(healthProvider.notifier).reset();
 
       // Open all hardware metric capabilities by default
       ref.read(hrSupportedProvider.notifier).state = true;
@@ -49,7 +54,7 @@ class WatchNotifier extends StateNotifier<WatchState> {
       ref.read(spo2SupportedProvider.notifier).state = true;
       ref.read(stepsSupportedProvider.notifier).state = true;
 
-      // Discover BLE services & subscribe to all notify/indicate characteristics
+      // Discover BLE services & subscribe to notify/indicate characteristics
       try {
         final services = await device.discoverServices();
         for (final service in services) {
@@ -77,7 +82,6 @@ class WatchNotifier extends StateNotifier<WatchState> {
             // Send trigger sync ping if writable (Triggers telemetry stream on Chinese & Custom Watch Chipsets)
             if (characteristic.properties.write || characteristic.properties.writeWithoutResponse) {
               try {
-                // Common sync trigger bytes [0xAB, 0x00, 0x04, 0xFF, 0x31] or [0x55, 0x01]
                 await characteristic.write([0xAB, 0x00, 0x04, 0xFF, 0x31], withoutResponse: characteristic.properties.writeWithoutResponse);
               } catch (_) {}
             }
@@ -97,6 +101,13 @@ class WatchNotifier extends StateNotifier<WatchState> {
     state = state.copyWith(status: WatchConnectionStatus.connecting);
     try {
       await _api.post(ApiConstants.connectToken, {'token': token});
+
+      final uid = FirebaseAuth.instance.currentUser?.uid;
+      if (uid != null) {
+        try { await _api.delete(ApiConstants.cleanHealthData(uid)); } catch (_) {}
+      }
+      ref.read(healthProvider.notifier).reset();
+
       state = state.copyWith(status: WatchConnectionStatus.connected, deviceName: 'Watch (Token)');
       ref.read(watchConnectedProvider.notifier).state = true;
       ref.read(healthProvider.notifier).startContinuousSync();
@@ -126,8 +137,8 @@ class WatchNotifier extends StateNotifier<WatchState> {
 
     final u = uuid?.toLowerCase() ?? '';
 
-    // 2. Standard GATT Heart Rate Characteristic (0x2A37)
-    if (u.contains('2a37')) {
+    // 2. Standard GATT Heart Rate Characteristic (0x2A37 / 0x180D)
+    if (u.contains('2a37') || u.contains('180d')) {
       int flags = bytes[0];
       bool is16Bit = (flags & 0x01) != 0;
       int bpm = 0;
@@ -144,8 +155,8 @@ class WatchNotifier extends StateNotifier<WatchState> {
       }
     }
 
-    // 3. Standard GATT Blood Pressure Measurement (0x2A35)
-    if (u.contains('2a35') && bytes.length >= 5) {
+    // 3. Standard GATT Blood Pressure Measurement (0x2A35 / 0x1810)
+    if ((u.contains('2a35') || u.contains('1810')) && bytes.length >= 5) {
       int sys = bytes[1] | (bytes[2] << 8);
       int dia = bytes[3] | (bytes[4] << 8);
       if (sys >= 60 && sys <= 240 && dia >= 30 && dia <= 160) {
@@ -155,8 +166,8 @@ class WatchNotifier extends StateNotifier<WatchState> {
       }
     }
 
-    // 4. Standard GATT Pulse Oximeter / SpO2 Characteristic (0x2A5E / SpO2)
-    if ((u.contains('2a5e') || u.contains('spo2')) && bytes.length >= 2) {
+    // 4. Standard GATT Pulse Oximeter / SpO2 Characteristic (0x2A5E / 0x1822)
+    if ((u.contains('2a5e') || u.contains('1822') || u.contains('spo2')) && bytes.length >= 2) {
       int ox = bytes[1];
       if (ox >= 70 && ox <= 100) {
         ref.read(spo2SupportedProvider.notifier).state = true;
@@ -165,8 +176,8 @@ class WatchNotifier extends StateNotifier<WatchState> {
       }
     }
 
-    // 5. Standard GATT RSC / Pedometer Step Count (0x2A53)
-    if (u.contains('2a53') && bytes.length >= 3) {
+    // 5. Standard GATT RSC / Pedometer Step Count (0x2A53 / 0x1814)
+    if ((u.contains('2a53') || u.contains('1814') || u.contains('pedometer') || u.contains('step')) && bytes.length >= 3) {
       int steps = bytes[1] | (bytes[2] << 8);
       if (bytes.length >= 5) {
         steps = bytes[1] | (bytes[2] << 8) | (bytes[3] << 16) | (bytes[4] << 24);
@@ -181,48 +192,30 @@ class WatchNotifier extends StateNotifier<WatchState> {
     // 6. Header-Prefixed Smartwatch Vendor Packets (0xAB, 0x55, 0xAA, 0xFA, 0xFC, 0x7C)
     final firstByte = bytes[0];
     if (firstByte == 0xAB || firstByte == 0x55 || firstByte == 0xAA || firstByte == 0xFA || firstByte == 0xFC || firstByte == 0x7C) {
-      // Packet format: [Header, Cmd/Len, BPM, SYS, DIA, SpO2, Steps_Hi, Steps_Lo, ...]
-      int offset = (bytes.length >= 4 && (bytes[1] < 10)) ? 2 : 1;
-      int bpm = (bytes.length > offset) ? bytes[offset] : 0;
-      int sys = (bytes.length > offset + 1) ? bytes[offset + 1] : 0;
-      int dia = (bytes.length > offset + 2) ? bytes[offset + 2] : 0;
-      int ox = (bytes.length > offset + 3) ? bytes[offset + 3] : 0;
-      int steps = (bytes.length >= offset + 6) ? ((bytes[offset + 4] << 8) | bytes[offset + 5]) : 0;
+      // Validate health telemetry command byte (e.g. 0x51, 0x52, 0x08, 0x02) to ignore time/battery/info bytes
+      int cmdByte = (bytes.length >= 2) ? bytes[1] : 0;
+      bool isHealthCmd = (cmdByte == 0x51 || cmdByte == 0x52 || cmdByte == 0x08 || cmdByte == 0x02 || cmdByte == 0x0A);
 
-      final Map<String, dynamic> data = {};
-      if (bpm >= 40 && bpm <= 240) { data['heartRate'] = bpm; ref.read(hrSupportedProvider.notifier).state = true; }
-      if (sys >= 60 && sys <= 240 && dia >= 30 && dia <= 160) {
-        data['systolic'] = sys; data['diastolic'] = dia;
-        ref.read(bpSupportedProvider.notifier).state = true;
-      }
-      if (ox >= 70 && ox <= 100) { data['spo2'] = ox; ref.read(spo2SupportedProvider.notifier).state = true; }
-      if (steps > 0 && steps < 200000) { data['steps'] = steps; ref.read(stepsSupportedProvider.notifier).state = true; }
+      if (isHealthCmd && bytes.length >= 5) {
+        int bpm = bytes[2];
+        int sys = (bytes.length >= 4) ? bytes[3] : 0;
+        int dia = (bytes.length >= 5) ? bytes[4] : 0;
+        int ox = (bytes.length >= 6) ? bytes[5] : 0;
+        int steps = (bytes.length >= 8) ? ((bytes[6] << 8) | bytes[7]) : 0;
 
-      if (data.isNotEmpty) {
-        _saveAndPush(data);
-        return;
-      }
-    }
+        final Map<String, dynamic> data = {};
+        if (bpm >= 40 && bpm <= 240) { data['heartRate'] = bpm; ref.read(hrSupportedProvider.notifier).state = true; }
+        if (sys >= 60 && sys <= 240 && dia >= 30 && dia <= 160) {
+          data['systolic'] = sys; data['diastolic'] = dia;
+          ref.read(bpSupportedProvider.notifier).state = true;
+        }
+        if (ox >= 70 && ox <= 100) { data['spo2'] = ox; ref.read(spo2SupportedProvider.notifier).state = true; }
+        if (steps > 0 && steps < 200000) { data['steps'] = steps; ref.read(stepsSupportedProvider.notifier).state = true; }
 
-    // 7. Plain Byte Array telemetry [BPM, SYS, DIA, SpO2, Steps_Hi, Steps_Lo]
-    if (bytes.length >= 2) {
-      int bpm = bytes[0];
-      int sys = (bytes.length >= 3) ? bytes[1] : 0;
-      int dia = (bytes.length >= 3) ? bytes[2] : 0;
-      int ox = (bytes.length >= 4) ? bytes[3] : 0;
-      int steps = (bytes.length >= 6) ? ((bytes[4] << 8) | bytes[5]) : 0;
-
-      final Map<String, dynamic> data = {};
-      if (bpm >= 40 && bpm <= 240) { data['heartRate'] = bpm; ref.read(hrSupportedProvider.notifier).state = true; }
-      if (sys >= 60 && sys <= 240 && dia >= 30 && dia <= 160) {
-        data['systolic'] = sys; data['diastolic'] = dia;
-        ref.read(bpSupportedProvider.notifier).state = true;
-      }
-      if (ox >= 70 && ox <= 100) { data['spo2'] = ox; ref.read(spo2SupportedProvider.notifier).state = true; }
-      if (steps > 0 && steps < 200000) { data['steps'] = steps; ref.read(stepsSupportedProvider.notifier).state = true; }
-
-      if (data.isNotEmpty) {
-        _saveAndPush(data);
+        if (data.isNotEmpty) {
+          _saveAndPush(data);
+          return;
+        }
       }
     }
   }
