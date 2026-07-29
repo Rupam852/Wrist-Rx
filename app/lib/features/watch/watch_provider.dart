@@ -29,6 +29,8 @@ class WatchNotifier extends StateNotifier<WatchState> {
   final _api = ApiService();
   BluetoothDevice? _connectedDevice;
   StreamSubscription? _bleSubscription;
+  Timer? _watchPingTimer;
+  BluetoothCharacteristic? _writeCharacteristic;
 
   Future<void> connectViaBluetooth(BluetoothDevice device) async {
     state = state.copyWith(status: WatchConnectionStatus.connecting, deviceName: device.platformName);
@@ -59,7 +61,12 @@ class WatchNotifier extends StateNotifier<WatchState> {
         final services = await device.discoverServices();
         for (final service in services) {
           for (final characteristic in service.characteristics) {
-            // Read initial value if readable
+            // Save write characteristic for active sync pings
+            if (characteristic.properties.write || characteristic.properties.writeWithoutResponse) {
+              _writeCharacteristic = characteristic;
+            }
+
+            // Read initial stored values immediately if characteristic is readable
             if (characteristic.properties.read) {
               try {
                 final initialBytes = await characteristic.read();
@@ -78,16 +85,18 @@ class WatchNotifier extends StateNotifier<WatchState> {
                 }
               });
             }
-
-            // Send trigger sync ping if writable (Triggers telemetry stream on Chinese & Custom Watch Chipsets)
-            if (characteristic.properties.write || characteristic.properties.writeWithoutResponse) {
-              try {
-                await characteristic.write([0xAB, 0x00, 0x04, 0xFF, 0x31], withoutResponse: characteristic.properties.writeWithoutResponse);
-              } catch (_) {}
-            }
           }
         }
       } catch (_) {}
+
+      // Send multi-probe sync commands immediately to pull latest steps, HR, and SpO2 from watch memory
+      _triggerWatchSync();
+
+      // Start 4-second continuous sync ping loop to pull latest telemetry
+      _watchPingTimer?.cancel();
+      _watchPingTimer = Timer.periodic(const Duration(seconds: 4), (_) {
+        _triggerWatchSync();
+      });
 
       state = state.copyWith(status: WatchConnectionStatus.connected);
       ref.read(watchConnectedProvider.notifier).state = true;
@@ -95,6 +104,22 @@ class WatchNotifier extends StateNotifier<WatchState> {
     } catch (e) {
       state = state.copyWith(status: WatchConnectionStatus.disconnected, error: e.toString());
     }
+  }
+
+  void _triggerWatchSync() async {
+    if (_writeCharacteristic == null) return;
+    try {
+      final noResp = _writeCharacteristic!.properties.writeWithoutResponse;
+      // Command 1: General Telemetry Sync
+      await _writeCharacteristic!.write([0xAB, 0x00, 0x04, 0xFF, 0x31], withoutResponse: noResp);
+      // Command 2: Pedometer / Steps Sync
+      await _writeCharacteristic!.write([0xAB, 0x00, 0x04, 0xFF, 0x51], withoutResponse: noResp);
+      // Command 3: HR & SpO2 Sync
+      await _writeCharacteristic!.write([0xAB, 0x00, 0x04, 0xFF, 0x52], withoutResponse: noResp);
+      // Command 4: Vendor Pedometer Sync
+      await _writeCharacteristic!.write([0x55, 0x01], withoutResponse: noResp);
+      await _writeCharacteristic!.write([0x55, 0x02], withoutResponse: noResp);
+    } catch (_) {}
   }
 
   Future<bool> connectViaToken(String token) async {
@@ -200,8 +225,8 @@ class WatchNotifier extends StateNotifier<WatchState> {
         }
       }
 
-      // SpO2 Blood Oxygen Command (0x12, 0x0C, 0x27) -> ONLY update SpO2!
-      if ((cmdByte == 0x12 || cmdByte == 0x0C || cmdByte == 0x27) && bytes.length >= 3) {
+      // SpO2 Blood Oxygen Command (0x12, 0x0C, 0x27, 0x53) -> ONLY update SpO2!
+      if ((cmdByte == 0x12 || cmdByte == 0x0C || cmdByte == 0x27 || cmdByte == 0x53) && bytes.length >= 3) {
         int ox = bytes[2];
         if (ox >= 70 && ox <= 100) {
           ref.read(spo2SupportedProvider.notifier).state = true;
@@ -221,8 +246,8 @@ class WatchNotifier extends StateNotifier<WatchState> {
         }
       }
 
-      // Pedometer Steps Command (0x02, 0x07) -> ONLY update Steps!
-      if ((cmdByte == 0x02 || cmdByte == 0x07) && bytes.length >= 4) {
+      // Pedometer Steps Command (0x02, 0x07, 0x51) -> ONLY update Steps!
+      if ((cmdByte == 0x02 || cmdByte == 0x07 || cmdByte == 0x51) && bytes.length >= 4) {
         int steps = (bytes[2] << 8) | bytes[3];
         if (bytes.length >= 6) steps = (bytes[2] << 24) | (bytes[3] << 16) | (bytes[4] << 8) | bytes[5];
         if (steps > 0 && steps < 200000) {
@@ -245,6 +270,7 @@ class WatchNotifier extends StateNotifier<WatchState> {
   }
 
   Future<void> disconnect() async {
+    _watchPingTimer?.cancel();
     _bleSubscription?.cancel();
     await _connectedDevice?.disconnect();
     final uid = FirebaseAuth.instance.currentUser?.uid;
@@ -252,6 +278,7 @@ class WatchNotifier extends StateNotifier<WatchState> {
       try { await _api.post(ApiConstants.disconnectWatch(uid), {}); } catch (_) {}
     }
     _connectedDevice = null;
+    _writeCharacteristic = null;
     ref.read(healthProvider.notifier).reset();
     ref.read(watchConnectedProvider.notifier).state = false;
     ref.read(hrSupportedProvider.notifier).state = true;
