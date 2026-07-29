@@ -12,6 +12,7 @@ class ApiConstants {
   static const String saveReading = '/api/health/reading';
   static String todayData(String uid) => '/api/health/$uid/today';
   static String historyData(String uid) => '/api/health/$uid/history';
+  static String cleanHealthData(String uid) => '/api/health/$uid/clean';
 
   // Watch
   static const String connectBluetooth = '/api/watch/connect-bluetooth';

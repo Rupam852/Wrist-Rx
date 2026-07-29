@@ -99,4 +99,14 @@ router.get('/:uid/history', authMiddleware, async (req, res) => {
   }
 });
 
+// DELETE /api/health/:uid/clean — Clean all user health data from database
+router.delete('/:uid/clean', authMiddleware, async (req, res) => {
+  try {
+    await HealthData.deleteMany({ userId: req.params.uid });
+    res.json({ success: true, message: 'All user health data wiped successfully' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 module.exports = router;

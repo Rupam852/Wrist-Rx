@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/services/storage_service.dart';
+import '../../core/services/api_service.dart';
+import '../../core/constants/api_constants.dart';
 import '../../shared/models/models.dart';
 import '../auth/auth_provider.dart';
+import '../home/health_provider.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -15,6 +19,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   final _apiKeyController = TextEditingController();
   bool _apiKeyObscured = true;
   bool _isSavingKey = false;
+  bool _isCleaningData = false;
   String _selectedModel = 'gemini-2.0-flash';
   bool _isLoadingKey = true;
 
@@ -66,12 +71,76 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     if (user == null) return;
     UserSettings newSettings;
     switch (key) {
-      case 'notifications': newSettings = user.settings.copyWith(notifications: value); break;
-      case 'sound': newSettings = user.settings.copyWith(sound: value); break;
-      case 'haptic': newSettings = user.settings.copyWith(haptic: value); break;
-      default: return;
+      case 'notifications':
+        newSettings = user.settings.copyWith(notifications: value);
+        break;
+      case 'sound':
+        newSettings = user.settings.copyWith(sound: value);
+        break;
+      case 'haptic':
+        newSettings = user.settings.copyWith(haptic: value);
+        break;
+      default:
+        return;
     }
     await ref.read(userModelProvider.notifier).updateSettings(newSettings);
+  }
+
+  void _confirmCleanData(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.cardDark,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(children: [
+          Icon(Icons.warning_amber_rounded, color: Colors.redAccent, size: 28),
+          SizedBox(width: 10),
+          Text('Wipe All Data?', style: TextStyle(color: Colors.white)),
+        ]),
+        content: const Text(
+          'Are you sure you want to clean all your health telemetry data from the database and app?\n\nThis action cannot be undone and resets the app state like a brand new installation.',
+          style: TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel', style: TextStyle(color: Colors.white54)),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.redAccent),
+            onPressed: () async {
+              Navigator.pop(ctx);
+              setState(() => _isCleaningData = true);
+              try {
+                final uid = FirebaseAuth.instance.currentUser?.uid;
+                if (uid != null) {
+                  final api = ApiService();
+                  await api.delete(ApiConstants.cleanHealthData(uid));
+                }
+                ref.read(healthProvider.notifier).reset();
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('✨ All health data wiped! App reset like brand new install.'),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Error cleaning data: $e'), backgroundColor: Colors.red),
+                  );
+                }
+              } finally {
+                if (mounted) setState(() => _isCleaningData = false);
+              }
+            },
+            child: const Text('Yes, Clean All Data'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -81,39 +150,36 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.backgroundDark,
-      appBar: AppBar(title: const Text('Settings')),
+      appBar: AppBar(
+        title: const Text('Settings', style: TextStyle(fontWeight: FontWeight.w700)),
+      ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-
-          // ── Notifications ──────────────────────────────
-          _SectionHeader('🔔 Notifications'),
+          // ── App Preferences ────────────────────────────
+          _SectionHeader('⚙ App Preferences'),
           _SettingsTile(
-            title: 'Enable Notifications',
-            subtitle: 'Health alerts and reminders',
+            title: 'Push Notifications',
+            subtitle: 'Get real-time health alerts & watch sync updates',
             value: settings.notifications,
             onChanged: (v) => _updateToggle('notifications', v),
           ),
-          const SizedBox(height: 24),
-
-          // ── Sound & Haptic ─────────────────────────────
-          _SectionHeader('🔊 Sound & Haptic'),
-          _SettingsTile(
-            title: 'Sound',
-            subtitle: 'Alert sounds for notifications',
-            value: settings.sound,
-            onChanged: (v) => _updateToggle('sound', v),
-          ),
           _SettingsTile(
             title: 'Haptic Feedback',
-            subtitle: 'Vibration feedback in app',
+            subtitle: 'Vibrate watch & phone on SOS & key alerts',
             value: settings.haptic,
             onChanged: (v) => _updateToggle('haptic', v),
           ),
+          _SettingsTile(
+            title: 'Sound Alerts',
+            subtitle: 'Play audio chimes during high priority events',
+            value: settings.sound,
+            onChanged: (v) => _updateToggle('sound', v),
+          ),
           const SizedBox(height: 24),
 
-          // ── AI Configuration ───────────────────────────
-          _SectionHeader('🤖 AI Configuration'),
+          // ── AI Model Configuration ─────────────────────
+          _SectionHeader('🤖 Gemini AI Configuration'),
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
@@ -124,28 +190,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Provider
-                Row(children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(color: Colors.blue.withOpacity(0.15), borderRadius: BorderRadius.circular(8)),
-                    child: const Icon(Icons.auto_awesome_rounded, color: Colors.blue, size: 20),
-                  ),
-                  const SizedBox(width: 12),
-                  Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    const Text('Provider', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
-                    Text('Google Gemini', style: TextStyle(color: AppColors.primary, fontSize: 13)),
-                  ]),
-                ]),
-                const Divider(height: 24),
-
-                // Model selector
-                const Text('Model', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14)),
-                const SizedBox(height: 10),
+                const Text('Select AI Model', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14)),
+                const SizedBox(height: 12),
                 ..._models.map((m) => GestureDetector(
                   onTap: () => setState(() => _selectedModel = m.$1),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 150),
+                  child: Container(
                     margin: const EdgeInsets.only(bottom: 8),
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
@@ -259,6 +308,51 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   ),
                   title: const Text('Add Emergency Contact', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w500)),
                   onTap: () => _showAddContactDialog(context),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
+
+          // ── Data & Storage Management ─────────────────
+          _SectionHeader('🧹 Data & Storage Management'),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppColors.cardDark,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.redAccent.withOpacity(0.3)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Clean My Data from Database & App',
+                  style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.w700, fontSize: 15),
+                ),
+                const SizedBox(height: 6),
+                const Text(
+                  'Wipes all stored health metrics, steps, readings from database and resets app state like a fresh install.',
+                  style: TextStyle(color: Colors.white70, fontSize: 12),
+                ),
+                const SizedBox(height: 14),
+                SizedBox(
+                  width: double.infinity,
+                  height: 46,
+                  child: OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: Colors.redAccent, width: 1.5),
+                      backgroundColor: Colors.redAccent.withOpacity(0.1),
+                    ),
+                    onPressed: _isCleaningData ? null : () => _confirmCleanData(context),
+                    icon: _isCleaningData
+                        ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.redAccent))
+                        : const Icon(Icons.delete_forever_rounded, color: Colors.redAccent, size: 20),
+                    label: Text(
+                      _isCleaningData ? 'Wiping Data...' : 'Clean All My Data',
+                      style: const TextStyle(color: Colors.redAccent, fontWeight: FontWeight.w700),
+                    ),
+                  ),
                 ),
               ],
             ),
