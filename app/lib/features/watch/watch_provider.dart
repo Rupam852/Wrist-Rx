@@ -121,23 +121,19 @@ class WatchNotifier extends StateNotifier<WatchState> {
   void _parseBleBytes(List<int> bytes, [String? uuid]) {
     if (bytes.isEmpty) return;
 
-    // 1. Try decoding as JSON string packet
+    // 1. JSON String Packet Parser
     try {
       final str = utf8.decode(bytes);
       if (str.startsWith('{') && str.endsWith('}')) {
         final Map<String, dynamic> json = jsonDecode(str);
-        ref.read(healthProvider.notifier).updateFromWatch(json);
-        final uid = FirebaseAuth.instance.currentUser?.uid;
-        if (uid != null) {
-          _api.post(ApiConstants.saveReading, json).catchError((_) => <String, dynamic>{});
-        }
+        _saveAndPush(json);
         return;
       }
     } catch (_) {}
 
     final u = uuid?.toLowerCase() ?? '';
 
-    // 2. Standard GATT Heart Rate Characteristic (0x2A37 / 0x180D)
+    // 2. Standard GATT Heart Rate Characteristic (0x2A37 / 0x180D) — ONLY updates Heart Rate
     if (u.contains('2a37') || u.contains('180d')) {
       int flags = bytes[0];
       bool is16Bit = (flags & 0x01) != 0;
@@ -155,7 +151,7 @@ class WatchNotifier extends StateNotifier<WatchState> {
       }
     }
 
-    // 3. Standard GATT Blood Pressure Measurement (0x2A35 / 0x1810)
+    // 3. Standard GATT Blood Pressure Measurement (0x2A35 / 0x1810) — ONLY updates Blood Pressure
     if ((u.contains('2a35') || u.contains('1810')) && bytes.length >= 5) {
       int sys = bytes[1] | (bytes[2] << 8);
       int dia = bytes[3] | (bytes[4] << 8);
@@ -166,8 +162,8 @@ class WatchNotifier extends StateNotifier<WatchState> {
       }
     }
 
-    // 4. Standard GATT Pulse Oximeter / SpO2 Characteristic (0x2A5E / 0x1822)
-    if ((u.contains('2a5e') || u.contains('1822') || u.contains('spo2')) && bytes.length >= 2) {
+    // 4. Standard GATT Pulse Oximeter / SpO2 Characteristic (0x2A5E / 0x1822) — ONLY updates SpO2
+    if ((u.contains('2a5e') || u.contains('1822') || u.contains('spo2') || u.contains('oximeter')) && bytes.length >= 2) {
       int ox = bytes[1];
       if (ox >= 70 && ox <= 100) {
         ref.read(spo2SupportedProvider.notifier).state = true;
@@ -176,7 +172,7 @@ class WatchNotifier extends StateNotifier<WatchState> {
       }
     }
 
-    // 5. Standard GATT RSC / Pedometer Step Count (0x2A53 / 0x1814)
+    // 5. Standard GATT RSC / Pedometer Step Count (0x2A53 / 0x1814) — ONLY updates Steps
     if ((u.contains('2a53') || u.contains('1814') || u.contains('pedometer') || u.contains('step')) && bytes.length >= 3) {
       int steps = bytes[1] | (bytes[2] << 8);
       if (bytes.length >= 5) {
@@ -192,39 +188,59 @@ class WatchNotifier extends StateNotifier<WatchState> {
     // 6. Header-Prefixed Smartwatch Vendor Packets (0xAB, 0x55, 0xAA, 0xFA, 0xFC, 0x7C)
     final firstByte = bytes[0];
     if (firstByte == 0xAB || firstByte == 0x55 || firstByte == 0xAA || firstByte == 0xFA || firstByte == 0xFC || firstByte == 0x7C) {
-      // Validate health telemetry command byte (e.g. 0x51, 0x52, 0x08, 0x02) to ignore time/battery/info bytes
       int cmdByte = (bytes.length >= 2) ? bytes[1] : 0;
-      bool isHealthCmd = (cmdByte == 0x51 || cmdByte == 0x52 || cmdByte == 0x08 || cmdByte == 0x02 || cmdByte == 0x0A);
 
-      if (isHealthCmd && bytes.length >= 5) {
+      // Heart Rate Measurement Command (0x0A, 0x09, 0x51) -> ONLY update heart rate!
+      if ((cmdByte == 0x0A || cmdByte == 0x09 || cmdByte == 0x51) && bytes.length >= 3) {
         int bpm = bytes[2];
-        int sys = (bytes.length >= 4) ? bytes[3] : 0;
-        int dia = (bytes.length >= 5) ? bytes[4] : 0;
-        int ox = (bytes.length >= 6) ? bytes[5] : 0;
-        int steps = (bytes.length >= 8) ? ((bytes[6] << 8) | bytes[7]) : 0;
-
-        final Map<String, dynamic> data = {};
-        if (bpm >= 40 && bpm <= 240) { data['heartRate'] = bpm; ref.read(hrSupportedProvider.notifier).state = true; }
-        if (sys >= 60 && sys <= 240 && dia >= 30 && dia <= 160) {
-          data['systolic'] = sys; data['diastolic'] = dia;
-          ref.read(bpSupportedProvider.notifier).state = true;
+        if (bpm >= 40 && bpm <= 240) {
+          ref.read(hrSupportedProvider.notifier).state = true;
+          _saveAndPush({'heartRate': bpm});
+          return;
         }
-        if (ox >= 70 && ox <= 100) { data['spo2'] = ox; ref.read(spo2SupportedProvider.notifier).state = true; }
-        if (steps > 0 && steps < 200000) { data['steps'] = steps; ref.read(stepsSupportedProvider.notifier).state = true; }
+      }
 
-        if (data.isNotEmpty) {
-          _saveAndPush(data);
+      // SpO2 Blood Oxygen Command (0x12, 0x0C, 0x27) -> ONLY update SpO2!
+      if ((cmdByte == 0x12 || cmdByte == 0x0C || cmdByte == 0x27) && bytes.length >= 3) {
+        int ox = bytes[2];
+        if (ox >= 70 && ox <= 100) {
+          ref.read(spo2SupportedProvider.notifier).state = true;
+          _saveAndPush({'spo2': ox});
+          return;
+        }
+      }
+
+      // Blood Pressure Command (0x52) -> ONLY update Systolic & Diastolic!
+      if (cmdByte == 0x52 && bytes.length >= 4) {
+        int sys = bytes[2];
+        int dia = bytes[3];
+        if (sys >= 60 && sys <= 240 && dia >= 30 && dia <= 160) {
+          ref.read(bpSupportedProvider.notifier).state = true;
+          _saveAndPush({'systolic': sys, 'diastolic': dia});
+          return;
+        }
+      }
+
+      // Pedometer Steps Command (0x02, 0x07) -> ONLY update Steps!
+      if ((cmdByte == 0x02 || cmdByte == 0x07) && bytes.length >= 4) {
+        int steps = (bytes[2] << 8) | bytes[3];
+        if (bytes.length >= 6) steps = (bytes[2] << 24) | (bytes[3] << 16) | (bytes[4] << 8) | bytes[5];
+        if (steps > 0 && steps < 200000) {
+          ref.read(stepsSupportedProvider.notifier).state = true;
+          _saveAndPush({'steps': steps});
           return;
         }
       }
     }
   }
 
+  /// Merges single metric update into full HealthReading and saves complete reading to backend database
   void _saveAndPush(Map<String, dynamic> data) {
     ref.read(healthProvider.notifier).updateFromWatch(data);
+    final fullState = ref.read(healthProvider);
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid != null) {
-      _api.post(ApiConstants.saveReading, data).catchError((_) => <String, dynamic>{});
+      _api.post(ApiConstants.saveReading, fullState.toJson()).catchError((_) => <String, dynamic>{});
     }
   }
 
