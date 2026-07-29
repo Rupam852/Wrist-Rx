@@ -9,9 +9,11 @@ class PedometerService {
 
   StreamSubscription<StepCount>? _stepSubscription;
   Function(int steps)? _onStepCount;
+  int _initBootSteps = -1;
 
   void init({required Function(int steps) onStepCount}) async {
     _onStepCount = onStepCount;
+    _initBootSteps = -1;
 
     try {
       if (await Permission.activityRecognition.request().isGranted) {
@@ -19,7 +21,13 @@ class PedometerService {
         _stepSubscription = Pedometer.stepCountStream.listen(
           (StepCount event) {
             if (_onStepCount != null && event.steps > 0) {
-              _onStepCount!(event.steps);
+              if (_initBootSteps < 0) {
+                _initBootSteps = event.steps;
+              }
+              final sessionSteps = event.steps - _initBootSteps;
+              if (sessionSteps >= 0) {
+                _onStepCount!(sessionSteps);
+              }
             }
           },
           onError: (_) {},

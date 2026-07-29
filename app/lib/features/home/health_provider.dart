@@ -8,7 +8,7 @@ import '../../core/services/pedometer_service.dart';
 import '../../shared/models/models.dart';
 
 final healthProvider = StateNotifierProvider<HealthNotifier, HealthReading>((ref) {
-  final notifier = HealthNotifier();
+  final notifier = HealthNotifier(ref);
   // Fetch latest stored calculated telemetry on startup
   notifier.fetchLatestDataFromBackend();
   return notifier;
@@ -21,7 +21,8 @@ final stepsSupportedProvider = StateProvider<bool>((ref) => true); // Track whet
 
 
 class HealthNotifier extends StateNotifier<HealthReading> {
-  HealthNotifier() : super(HealthReading.empty);
+  final Ref _ref;
+  HealthNotifier(this._ref) : super(HealthReading.empty);
 
   final _api = ApiService();
   Timer? _syncTimer;
@@ -38,9 +39,12 @@ class HealthNotifier extends StateNotifier<HealthReading> {
     // 1. Load latest calculated stored data first
     fetchLatestDataFromBackend();
 
-    // 2. Start hardware pedometer step counter sensor as live fallback
+    // 2. Start hardware pedometer step counter sensor as live fallback ONLY when watch is disconnected
     _pedometer.init(onStepCount: (steps) {
-      updateFromWatch({'steps': steps});
+      final isWatchConnected = _ref.read(watchConnectedProvider);
+      if (!isWatchConnected) {
+        updateFromWatch({'steps': steps});
+      }
     });
 
     // 3. Connect WebSocket for live push
