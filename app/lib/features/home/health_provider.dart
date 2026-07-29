@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/services/api_service.dart';
 import '../../core/constants/api_constants.dart';
 import '../../core/services/websocket_service.dart';
+import '../../core/services/pedometer_service.dart';
 import '../../shared/models/models.dart';
 
 final healthProvider = StateNotifierProvider<HealthNotifier, HealthReading>((ref) {
@@ -25,6 +26,7 @@ class HealthNotifier extends StateNotifier<HealthReading> {
   final _api = ApiService();
   Timer? _syncTimer;
   final _ws = WebSocketService();
+  final _pedometer = PedometerService();
   int _baseSteps = 0;
 
   /// Captures pre-existing app step count when watch connects so live watch steps accumulate on top of baseline
@@ -36,12 +38,17 @@ class HealthNotifier extends StateNotifier<HealthReading> {
     // 1. Load latest calculated stored data first
     fetchLatestDataFromBackend();
 
-    // 2. Connect WebSocket for live push
+    // 2. Start hardware pedometer step counter sensor as live fallback
+    _pedometer.init(onStepCount: (steps) {
+      updateFromWatch({'steps': steps});
+    });
+
+    // 3. Connect WebSocket for live push
     _ws.connect(onDataReceived: (data) {
       updateFromWatch(data);
     });
 
-    // 3. 3-second backend sync for newly calculated readings
+    // 4. 3-second backend sync for newly calculated readings
     _syncTimer?.cancel();
     _syncTimer = Timer.periodic(const Duration(seconds: 3), (_) {
       fetchLatestDataFromBackend();
