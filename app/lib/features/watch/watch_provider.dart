@@ -112,13 +112,17 @@ class WatchNotifier extends StateNotifier<WatchState> {
       final noResp = _writeCharacteristic!.properties.writeWithoutResponse;
       // General Telemetry Sync
       await _writeCharacteristic!.write([0xAB, 0x00, 0x04, 0xFF, 0x31], withoutResponse: noResp);
-      // SpO2 Blood Oxygen Active Measurement Probes
+      // SpO2 Blood Oxygen Active Measurement Probes (5-byte & 3-byte protocol variants)
       await _writeCharacteristic!.write([0xAB, 0x00, 0x04, 0xFF, 0x12], withoutResponse: noResp);
       await _writeCharacteristic!.write([0xAB, 0x00, 0x04, 0xFF, 0x11], withoutResponse: noResp);
       await _writeCharacteristic!.write([0xAB, 0x00, 0x04, 0xFF, 0x53], withoutResponse: noResp);
+      await _writeCharacteristic!.write([0xAB, 0x12], withoutResponse: noResp);
+      await _writeCharacteristic!.write([0xAB, 0x11], withoutResponse: noResp);
       await _writeCharacteristic!.write([0x55, 0x12], withoutResponse: noResp);
+      await _writeCharacteristic!.write([0x55, 0x11], withoutResponse: noResp);
       // Heart Rate Probes
       await _writeCharacteristic!.write([0xAB, 0x00, 0x04, 0xFF, 0x52], withoutResponse: noResp);
+      await _writeCharacteristic!.write([0xAB, 0x0A], withoutResponse: noResp);
       await _writeCharacteristic!.write([0x55, 0x0A], withoutResponse: noResp);
       // Pedometer / Steps Probes
       await _writeCharacteristic!.write([0xAB, 0x00, 0x04, 0xFF, 0x51], withoutResponse: noResp);
@@ -192,8 +196,8 @@ class WatchNotifier extends StateNotifier<WatchState> {
       }
     }
 
-    // 4. Standard GATT Pulse Oximeter / SpO2 Characteristic (0x2A5E / 0x1822 / spo2 / oximeter / oxygen)
-    if (u.contains('2a5e') || u.contains('1822') || u.contains('spo2') || u.contains('oximeter') || u.contains('oxygen')) {
+    // 4. Standard GATT Pulse Oximeter / SpO2 Characteristic (0x2A5E / 0x2A5F / 0x2A60 / 0x1822 / spo2 / oximeter / oxygen)
+    if (u.contains('2a5e') || u.contains('2a5f') || u.contains('2a60') || u.contains('1822') || u.contains('spo2') || u.contains('oximeter') || u.contains('oxygen')) {
       for (int i = 0; i < bytes.length; i++) {
         int ox = bytes[i];
         if (ox >= 70 && ox <= 100) {
@@ -217,14 +221,23 @@ class WatchNotifier extends StateNotifier<WatchState> {
       }
     }
 
-    // 6. Header-Prefixed Smartwatch Vendor Packets (0xAB, 0x55, 0xAA, 0xFA, 0xFC, 0x7C)
+    // 6. Universal Smartwatch Vendor Protocol Parser (Supports 3-byte, 5-byte, & variable header packets)
     final firstByte = bytes[0];
-    if (firstByte == 0xAB || firstByte == 0x55 || firstByte == 0xAA || firstByte == 0xFA || firstByte == 0xFC || firstByte == 0x7C) {
-      int cmdByte = (bytes.length >= 2) ? bytes[1] : 0;
+    if (firstByte == 0xAB || firstByte == 0x55 || firstByte == 0xAA || firstByte == 0xFA || firstByte == 0xFC || firstByte == 0x7C || firstByte == 0x00) {
 
-      // SpO2 Blood Oxygen Commands (0x12, 0x11, 0x0C, 0x27, 0x53, 0x1B) -> Real-time SpO2 Stream!
-      if (cmdByte == 0x12 || cmdByte == 0x11 || cmdByte == 0x0C || cmdByte == 0x27 || cmdByte == 0x53 || cmdByte == 0x1B) {
-        for (int i = 1; i < bytes.length; i++) {
+      // A) Check for SpO2 Command Code at ANY position in header bytes [1..min(4, length-1)]
+      bool isSpO2Cmd = false;
+      for (int i = 1; i < bytes.length && i <= 4; i++) {
+        int c = bytes[i];
+        if (c == 0x12 || c == 0x11 || c == 0x0C || c == 0x27 || c == 0x53 || c == 0x1B || c == 0x18 || c == 0x28) {
+          isSpO2Cmd = true;
+          break;
+        }
+      }
+
+      if (isSpO2Cmd && bytes.length >= 3) {
+        // Scan for SpO2 percentage (70% to 100%) across payload
+        for (int i = 2; i < bytes.length; i++) {
           int ox = bytes[i];
           if (ox >= 70 && ox <= 100) {
             ref.read(spo2SupportedProvider.notifier).state = true;
@@ -234,20 +247,36 @@ class WatchNotifier extends StateNotifier<WatchState> {
         }
       }
 
-      // Heart Rate Measurement Command (0x0A, 0x09, 0x51) -> ONLY update heart rate!
-      if ((cmdByte == 0x0A || cmdByte == 0x09 || cmdByte == 0x51) && bytes.length >= 3) {
-        int bpm = bytes[2];
-        if (bpm >= 40 && bpm <= 240) {
-          ref.read(hrSupportedProvider.notifier).state = true;
-          _saveAndPush({'heartRate': bpm});
-          return;
+      // B) Check for Heart Rate Command Code at ANY position in header bytes [1..min(4, length-1)]
+      bool isHRCmd = false;
+      for (int i = 1; i < bytes.length && i <= 4; i++) {
+        int c = bytes[i];
+        if (c == 0x0A || c == 0x09 || c == 0x51 || c == 0x14 || c == 0x08) {
+          isHRCmd = true;
+          break;
         }
       }
 
-      // Blood Pressure Command (0x52) -> ONLY update Systolic & Diastolic!
-      if (cmdByte == 0x52 && bytes.length >= 4) {
-        int sys = bytes[2];
-        int dia = bytes[3];
+      if (isHRCmd && bytes.length >= 3) {
+        for (int i = 2; i < bytes.length; i++) {
+          int bpm = bytes[i];
+          if (bpm >= 40 && bpm <= 240) {
+            ref.read(hrSupportedProvider.notifier).state = true;
+            _saveAndPush({'heartRate': bpm});
+            return;
+          }
+        }
+      }
+
+      // C) Check for Blood Pressure Command Code
+      bool isBPCmd = false;
+      for (int i = 1; i < bytes.length && i <= 4; i++) {
+        if (bytes[i] == 0x52) { isBPCmd = true; break; }
+      }
+
+      if (isBPCmd && bytes.length >= 4) {
+        int sys = bytes[bytes.length >= 5 ? 3 : 2];
+        int dia = bytes[bytes.length >= 5 ? 4 : 3];
         if (sys >= 60 && sys <= 240 && dia >= 30 && dia <= 160) {
           ref.read(bpSupportedProvider.notifier).state = true;
           _saveAndPush({'systolic': sys, 'diastolic': dia});
@@ -255,10 +284,22 @@ class WatchNotifier extends StateNotifier<WatchState> {
         }
       }
 
-      // Pedometer Steps Command (0x02, 0x07, 0x51) -> ONLY update Steps!
-      if ((cmdByte == 0x02 || cmdByte == 0x07 || cmdByte == 0x51) && bytes.length >= 4) {
-        int steps = (bytes[2] << 8) | bytes[3];
-        if (bytes.length >= 6) steps = (bytes[2] << 24) | (bytes[3] << 16) | (bytes[4] << 8) | bytes[5];
+      // D) Check for Pedometer Steps Command Code
+      bool isStepCmd = false;
+      for (int i = 1; i < bytes.length && i <= 4; i++) {
+        int c = bytes[i];
+        if (c == 0x02 || c == 0x07 || c == 0x31) {
+          isStepCmd = true;
+          break;
+        }
+      }
+
+      if (isStepCmd && bytes.length >= 4) {
+        int startIdx = bytes.length >= 6 ? 3 : 2;
+        int steps = (bytes[startIdx] << 8) | bytes[startIdx + 1];
+        if (bytes.length >= startIdx + 4) {
+          steps = (bytes[startIdx] << 24) | (bytes[startIdx + 1] << 16) | (bytes[startIdx + 2] << 8) | bytes[startIdx + 3];
+        }
         if (steps > 0 && steps < 200000) {
           ref.read(stepsSupportedProvider.notifier).state = true;
           _saveAndPush({'steps': steps});
