@@ -92,9 +92,9 @@ class WatchNotifier extends StateNotifier<WatchState> {
       // Send multi-probe sync commands immediately to pull latest steps, HR, and SpO2 from watch memory
       _triggerWatchSync();
 
-      // Start 4-second continuous sync ping loop to pull latest telemetry
+      // Start 3-second continuous sync ping loop for real-time SpO2, HR, and Step streaming
       _watchPingTimer?.cancel();
-      _watchPingTimer = Timer.periodic(const Duration(seconds: 4), (_) {
+      _watchPingTimer = Timer.periodic(const Duration(seconds: 3), (_) {
         _triggerWatchSync();
       });
 
@@ -110,13 +110,18 @@ class WatchNotifier extends StateNotifier<WatchState> {
     if (_writeCharacteristic == null) return;
     try {
       final noResp = _writeCharacteristic!.properties.writeWithoutResponse;
-      // Command 1: General Telemetry Sync
+      // General Telemetry Sync
       await _writeCharacteristic!.write([0xAB, 0x00, 0x04, 0xFF, 0x31], withoutResponse: noResp);
-      // Command 2: Pedometer / Steps Sync
-      await _writeCharacteristic!.write([0xAB, 0x00, 0x04, 0xFF, 0x51], withoutResponse: noResp);
-      // Command 3: HR & SpO2 Sync
+      // SpO2 Blood Oxygen Active Measurement Probes
+      await _writeCharacteristic!.write([0xAB, 0x00, 0x04, 0xFF, 0x12], withoutResponse: noResp);
+      await _writeCharacteristic!.write([0xAB, 0x00, 0x04, 0xFF, 0x11], withoutResponse: noResp);
+      await _writeCharacteristic!.write([0xAB, 0x00, 0x04, 0xFF, 0x53], withoutResponse: noResp);
+      await _writeCharacteristic!.write([0x55, 0x12], withoutResponse: noResp);
+      // Heart Rate Probes
       await _writeCharacteristic!.write([0xAB, 0x00, 0x04, 0xFF, 0x52], withoutResponse: noResp);
-      // Command 4: Vendor Pedometer Sync
+      await _writeCharacteristic!.write([0x55, 0x0A], withoutResponse: noResp);
+      // Pedometer / Steps Probes
+      await _writeCharacteristic!.write([0xAB, 0x00, 0x04, 0xFF, 0x51], withoutResponse: noResp);
       await _writeCharacteristic!.write([0x55, 0x01], withoutResponse: noResp);
       await _writeCharacteristic!.write([0x55, 0x02], withoutResponse: noResp);
     } catch (_) {}
@@ -187,13 +192,15 @@ class WatchNotifier extends StateNotifier<WatchState> {
       }
     }
 
-    // 4. Standard GATT Pulse Oximeter / SpO2 Characteristic (0x2A5E / 0x1822) — ONLY updates SpO2
-    if ((u.contains('2a5e') || u.contains('1822') || u.contains('spo2') || u.contains('oximeter')) && bytes.length >= 2) {
-      int ox = bytes[1];
-      if (ox >= 70 && ox <= 100) {
-        ref.read(spo2SupportedProvider.notifier).state = true;
-        _saveAndPush({'spo2': ox});
-        return;
+    // 4. Standard GATT Pulse Oximeter / SpO2 Characteristic (0x2A5E / 0x1822 / spo2 / oximeter / oxygen)
+    if (u.contains('2a5e') || u.contains('1822') || u.contains('spo2') || u.contains('oximeter') || u.contains('oxygen')) {
+      for (int i = 0; i < bytes.length; i++) {
+        int ox = bytes[i];
+        if (ox >= 70 && ox <= 100) {
+          ref.read(spo2SupportedProvider.notifier).state = true;
+          _saveAndPush({'spo2': ox});
+          return;
+        }
       }
     }
 
@@ -215,22 +222,24 @@ class WatchNotifier extends StateNotifier<WatchState> {
     if (firstByte == 0xAB || firstByte == 0x55 || firstByte == 0xAA || firstByte == 0xFA || firstByte == 0xFC || firstByte == 0x7C) {
       int cmdByte = (bytes.length >= 2) ? bytes[1] : 0;
 
+      // SpO2 Blood Oxygen Commands (0x12, 0x11, 0x0C, 0x27, 0x53, 0x1B) -> Real-time SpO2 Stream!
+      if (cmdByte == 0x12 || cmdByte == 0x11 || cmdByte == 0x0C || cmdByte == 0x27 || cmdByte == 0x53 || cmdByte == 0x1B) {
+        for (int i = 1; i < bytes.length; i++) {
+          int ox = bytes[i];
+          if (ox >= 70 && ox <= 100) {
+            ref.read(spo2SupportedProvider.notifier).state = true;
+            _saveAndPush({'spo2': ox});
+            return;
+          }
+        }
+      }
+
       // Heart Rate Measurement Command (0x0A, 0x09, 0x51) -> ONLY update heart rate!
       if ((cmdByte == 0x0A || cmdByte == 0x09 || cmdByte == 0x51) && bytes.length >= 3) {
         int bpm = bytes[2];
         if (bpm >= 40 && bpm <= 240) {
           ref.read(hrSupportedProvider.notifier).state = true;
           _saveAndPush({'heartRate': bpm});
-          return;
-        }
-      }
-
-      // SpO2 Blood Oxygen Command (0x12, 0x0C, 0x27, 0x53) -> ONLY update SpO2!
-      if ((cmdByte == 0x12 || cmdByte == 0x0C || cmdByte == 0x27 || cmdByte == 0x53) && bytes.length >= 3) {
-        int ox = bytes[2];
-        if (ox >= 70 && ox <= 100) {
-          ref.read(spo2SupportedProvider.notifier).state = true;
-          _saveAndPush({'spo2': ox});
           return;
         }
       }
