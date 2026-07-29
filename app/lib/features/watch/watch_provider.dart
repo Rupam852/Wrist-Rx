@@ -43,7 +43,7 @@ class WatchNotifier extends StateNotifier<WatchState> {
         } catch (_) {}
       }
 
-      // Default all health metric capabilities to true when connected
+      // Open all hardware metric capabilities by default
       ref.read(hrSupportedProvider.notifier).state = true;
       ref.read(bpSupportedProvider.notifier).state = true;
       ref.read(spo2SupportedProvider.notifier).state = true;
@@ -54,6 +54,17 @@ class WatchNotifier extends StateNotifier<WatchState> {
         final services = await device.discoverServices();
         for (final service in services) {
           for (final characteristic in service.characteristics) {
+            // Read initial value if readable
+            if (characteristic.properties.read) {
+              try {
+                final initialBytes = await characteristic.read();
+                if (initialBytes.isNotEmpty) {
+                  _parseBleBytes(initialBytes, characteristic.uuid.toString());
+                }
+              } catch (_) {}
+            }
+
+            // Enable Notifications / Indications
             if (characteristic.properties.notify || characteristic.properties.indicate) {
               await characteristic.setNotifyValue(true);
               _bleSubscription = characteristic.lastValueStream.listen((value) {
@@ -61,6 +72,14 @@ class WatchNotifier extends StateNotifier<WatchState> {
                   _parseBleBytes(value, characteristic.uuid.toString());
                 }
               });
+            }
+
+            // Send trigger sync ping if writable (Triggers telemetry stream on Chinese & Custom Watch Chipsets)
+            if (characteristic.properties.write || characteristic.properties.writeWithoutResponse) {
+              try {
+                // Common sync trigger bytes [0xAB, 0x00, 0x04, 0xFF, 0x31] or [0x55, 0x01]
+                await characteristic.write([0xAB, 0x00, 0x04, 0xFF, 0x31], withoutResponse: characteristic.properties.writeWithoutResponse);
+              } catch (_) {}
             }
           }
         }
@@ -105,9 +124,10 @@ class WatchNotifier extends StateNotifier<WatchState> {
       }
     } catch (_) {}
 
+    final u = uuid?.toLowerCase() ?? '';
+
     // 2. Standard GATT Heart Rate Characteristic (0x2A37)
-    final isHeartRateUuid = uuid?.toLowerCase().contains('2a37') == true;
-    if (isHeartRateUuid) {
+    if (u.contains('2a37')) {
       int flags = bytes[0];
       bool is16Bit = (flags & 0x01) != 0;
       int bpm = 0;
@@ -118,71 +138,100 @@ class WatchNotifier extends StateNotifier<WatchState> {
       }
 
       if (bpm >= 40 && bpm <= 240) {
-        final data = {'heartRate': bpm};
-        ref.read(healthProvider.notifier).updateFromWatch(data);
-        final uid = FirebaseAuth.instance.currentUser?.uid;
-        if (uid != null) {
-          _api.post(ApiConstants.saveReading, data).catchError((_) => <String, dynamic>{});
-        }
+        ref.read(hrSupportedProvider.notifier).state = true;
+        _saveAndPush({'heartRate': bpm});
         return;
       }
     }
 
     // 3. Standard GATT Blood Pressure Measurement (0x2A35)
-    final isBpUuid = uuid?.toLowerCase().contains('2a35') == true;
-    if (isBpUuid && bytes.length >= 5) {
+    if (u.contains('2a35') && bytes.length >= 5) {
       int sys = bytes[1] | (bytes[2] << 8);
       int dia = bytes[3] | (bytes[4] << 8);
       if (sys >= 60 && sys <= 240 && dia >= 30 && dia <= 160) {
-        final data = {'systolic': sys, 'diastolic': dia};
-        ref.read(healthProvider.notifier).updateFromWatch(data);
-        final uid = FirebaseAuth.instance.currentUser?.uid;
-        if (uid != null) {
-          _api.post(ApiConstants.saveReading, data).catchError((_) => <String, dynamic>{});
-        }
+        ref.read(bpSupportedProvider.notifier).state = true;
+        _saveAndPush({'systolic': sys, 'diastolic': dia});
         return;
       }
     }
 
     // 4. Standard GATT Pulse Oximeter / SpO2 Characteristic (0x2A5E / SpO2)
-    final isSpo2Uuid = uuid?.toLowerCase().contains('2a5e') == true || uuid?.toLowerCase().contains('spo2') == true;
-    if (isSpo2Uuid && bytes.length >= 2) {
+    if ((u.contains('2a5e') || u.contains('spo2')) && bytes.length >= 2) {
       int ox = bytes[1];
       if (ox >= 70 && ox <= 100) {
-        final data = {'spo2': ox};
-        ref.read(healthProvider.notifier).updateFromWatch(data);
-        final uid = FirebaseAuth.instance.currentUser?.uid;
-        if (uid != null) {
-          _api.post(ApiConstants.saveReading, data).catchError((_) => <String, dynamic>{});
-        }
+        ref.read(spo2SupportedProvider.notifier).state = true;
+        _saveAndPush({'spo2': ox});
         return;
       }
     }
 
-    // 5. Universal Multi-Metric Packet Parser (Supports custom smartwatch vendor protocols)
-    if (bytes.length >= 2) {
-      int possibleBpm = bytes[0];
-      int possibleSys = (bytes.length >= 3) ? bytes[1] : 0;
-      int possibleDia = (bytes.length >= 3) ? bytes[2] : 0;
-      int possibleSpo2 = (bytes.length >= 4) ? bytes[3] : 0;
-      int possibleSteps = (bytes.length >= 6) ? ((bytes[4] << 8) | bytes[5]) : 0;
+    // 5. Standard GATT RSC / Pedometer Step Count (0x2A53)
+    if (u.contains('2a53') && bytes.length >= 3) {
+      int steps = bytes[1] | (bytes[2] << 8);
+      if (bytes.length >= 5) {
+        steps = bytes[1] | (bytes[2] << 8) | (bytes[3] << 16) | (bytes[4] << 24);
+      }
+      if (steps > 0 && steps < 200000) {
+        ref.read(stepsSupportedProvider.notifier).state = true;
+        _saveAndPush({'steps': steps});
+        return;
+      }
+    }
+
+    // 6. Header-Prefixed Smartwatch Vendor Packets (0xAB, 0x55, 0xAA, 0xFA, 0xFC, 0x7C)
+    final firstByte = bytes[0];
+    if (firstByte == 0xAB || firstByte == 0x55 || firstByte == 0xAA || firstByte == 0xFA || firstByte == 0xFC || firstByte == 0x7C) {
+      // Packet format: [Header, Cmd/Len, BPM, SYS, DIA, SpO2, Steps_Hi, Steps_Lo, ...]
+      int offset = (bytes.length >= 4 && (bytes[1] < 10)) ? 2 : 1;
+      int bpm = (bytes.length > offset) ? bytes[offset] : 0;
+      int sys = (bytes.length > offset + 1) ? bytes[offset + 1] : 0;
+      int dia = (bytes.length > offset + 2) ? bytes[offset + 2] : 0;
+      int ox = (bytes.length > offset + 3) ? bytes[offset + 3] : 0;
+      int steps = (bytes.length >= offset + 6) ? ((bytes[offset + 4] << 8) | bytes[offset + 5]) : 0;
 
       final Map<String, dynamic> data = {};
-      if (possibleBpm >= 40 && possibleBpm <= 240) data['heartRate'] = possibleBpm;
-      if (possibleSys >= 60 && possibleSys <= 240 && possibleDia >= 30 && possibleDia <= 160) {
-        data['systolic'] = possibleSys;
-        data['diastolic'] = possibleDia;
+      if (bpm >= 40 && bpm <= 240) { data['heartRate'] = bpm; ref.read(hrSupportedProvider.notifier).state = true; }
+      if (sys >= 60 && sys <= 240 && dia >= 30 && dia <= 160) {
+        data['systolic'] = sys; data['diastolic'] = dia;
+        ref.read(bpSupportedProvider.notifier).state = true;
       }
-      if (possibleSpo2 >= 70 && possibleSpo2 <= 100) data['spo2'] = possibleSpo2;
-      if (possibleSteps > 0 && possibleSteps < 200000) data['steps'] = possibleSteps;
+      if (ox >= 70 && ox <= 100) { data['spo2'] = ox; ref.read(spo2SupportedProvider.notifier).state = true; }
+      if (steps > 0 && steps < 200000) { data['steps'] = steps; ref.read(stepsSupportedProvider.notifier).state = true; }
 
       if (data.isNotEmpty) {
-        ref.read(healthProvider.notifier).updateFromWatch(data);
-        final uid = FirebaseAuth.instance.currentUser?.uid;
-        if (uid != null) {
-          _api.post(ApiConstants.saveReading, data).catchError((_) => <String, dynamic>{});
-        }
+        _saveAndPush(data);
+        return;
       }
+    }
+
+    // 7. Plain Byte Array telemetry [BPM, SYS, DIA, SpO2, Steps_Hi, Steps_Lo]
+    if (bytes.length >= 2) {
+      int bpm = bytes[0];
+      int sys = (bytes.length >= 3) ? bytes[1] : 0;
+      int dia = (bytes.length >= 3) ? bytes[2] : 0;
+      int ox = (bytes.length >= 4) ? bytes[3] : 0;
+      int steps = (bytes.length >= 6) ? ((bytes[4] << 8) | bytes[5]) : 0;
+
+      final Map<String, dynamic> data = {};
+      if (bpm >= 40 && bpm <= 240) { data['heartRate'] = bpm; ref.read(hrSupportedProvider.notifier).state = true; }
+      if (sys >= 60 && sys <= 240 && dia >= 30 && dia <= 160) {
+        data['systolic'] = sys; data['diastolic'] = dia;
+        ref.read(bpSupportedProvider.notifier).state = true;
+      }
+      if (ox >= 70 && ox <= 100) { data['spo2'] = ox; ref.read(spo2SupportedProvider.notifier).state = true; }
+      if (steps > 0 && steps < 200000) { data['steps'] = steps; ref.read(stepsSupportedProvider.notifier).state = true; }
+
+      if (data.isNotEmpty) {
+        _saveAndPush(data);
+      }
+    }
+  }
+
+  void _saveAndPush(Map<String, dynamic> data) {
+    ref.read(healthProvider.notifier).updateFromWatch(data);
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid != null) {
+      _api.post(ApiConstants.saveReading, data).catchError((_) => <String, dynamic>{});
     }
   }
 
