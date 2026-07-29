@@ -97,8 +97,10 @@ class WatchNotifier extends StateNotifier<WatchState> {
         }
       } catch (_) {}
 
-      // Send initial sync commands immediately to pull latest steps, HR, and SpO2 from watch memory
+      // Send initial sync commands immediately in burst to pull latest steps, HR, and SpO2 from watch memory
       _triggerWatchSync();
+      Future.delayed(const Duration(milliseconds: 500), () => _triggerWatchSync());
+      Future.delayed(const Duration(milliseconds: 1500), () => _triggerWatchSync());
 
       // Start non-stopping 3-second rotating probe sync - avoids flooding the watch
       _watchPingTimer?.cancel();
@@ -131,11 +133,17 @@ class WatchNotifier extends StateNotifier<WatchState> {
       try {
         final noResp = char.properties.writeWithoutResponse;
 
-        // ── ALWAYS: General sync + Steps (live pedometer every tick) ──
+        // ── ALWAYS: General sync + Steps (pull current & stored step count) ──
         char.write([0xAB, 0x00, 0x04, 0xFF, 0x31], withoutResponse: noResp).catchError((_) => null);
         char.write([0xAB, 0x00, 0x04, 0xFF, 0x51], withoutResponse: noResp).catchError((_) => null);
+        char.write([0xAB, 0x51], withoutResponse: noResp).catchError((_) => null);
+        char.write([0xAB, 0x31], withoutResponse: noResp).catchError((_) => null);
+        char.write([0xAB, 0x07], withoutResponse: noResp).catchError((_) => null);
         char.write([0x55, 0x01], withoutResponse: noResp).catchError((_) => null);
         char.write([0x55, 0x02], withoutResponse: noResp).catchError((_) => null);
+        char.write([0x55, 0x51], withoutResponse: noResp).catchError((_) => null);
+        char.write([0xAA, 0x01], withoutResponse: noResp).catchError((_) => null);
+        char.write([0xEA, 0x01], withoutResponse: noResp).catchError((_) => null);
 
         if (cycle == 0) {
           // Heart Rate probe cycle
@@ -252,7 +260,9 @@ class WatchNotifier extends StateNotifier<WatchState> {
 
     // Only process known vendor protocol headers
     if (firstByte != 0xAB && firstByte != 0x55 && firstByte != 0xAA &&
-        firstByte != 0xFA && firstByte != 0xFC && firstByte != 0x7C) {
+        firstByte != 0xFA && firstByte != 0xFC && firstByte != 0x7C &&
+        firstByte != 0xEA && firstByte != 0x04 && firstByte != 0x68 &&
+        firstByte != 0xCD && firstByte != 0x80) {
       return;
     }
 
@@ -293,49 +303,66 @@ class WatchNotifier extends StateNotifier<WatchState> {
     }
 
     // ── Vendor Pedometer/Steps Response ────────────────────────────────────
-    // Command codes: 0x02, 0x07, 0x31, 0x51 (steps probe response)
-    // IMPORTANT: Parse as LITTLE-ENDIAN (standard for Chinese OEM BLE watches)
-    if (effectiveCmd == 0x02 || effectiveCmd == 0x07 || effectiveCmd == 0x31 || effectiveCmd == 0x51) {
-      if (bytes.length >= dataStart + 1) {
-        int steps = bytes[dataStart]; // 1-byte steps (small count)
-        if (bytes.length >= dataStart + 2) {
-          // 2-byte little-endian
-          steps = bytes[dataStart] | (bytes[dataStart + 1] << 8);
+    // Command codes: 0x02, 0x07, 0x31, 0x51, 0x01, 0x08, 0x0B, 0x1E
+    // Scan all payload offsets for valid 4-byte or 2-byte little-endian steps
+    final bool isStepCmd = (effectiveCmd == 0x02 || effectiveCmd == 0x07 ||
+                      effectiveCmd == 0x31 || effectiveCmd == 0x51 ||
+                      effectiveCmd == 0x01 || effectiveCmd == 0x08 ||
+                      effectiveCmd == 0x0B || effectiveCmd == 0x1E);
+
+    if (isStepCmd) {
+      int extractedSteps = 0;
+      for (int offset = dataStart; offset + 2 <= bytes.length; offset++) {
+        int s2 = bytes[offset] | (bytes[offset + 1] << 8);
+        if (s2 > 0 && s2 < 200000) {
+          extractedSteps = s2;
         }
-        if (bytes.length >= dataStart + 4) {
-          // 4-byte little-endian (most common)
-          steps = bytes[dataStart] |
-                  (bytes[dataStart + 1] << 8) |
-                  (bytes[dataStart + 2] << 16) |
-                  (bytes[dataStart + 3] << 24);
+        if (offset + 4 <= bytes.length) {
+          int s4 = bytes[offset] |
+                   (bytes[offset + 1] << 8) |
+                   (bytes[offset + 2] << 16) |
+                   (bytes[offset + 3] << 24);
+          if (s4 > 0 && s4 < 200000) {
+            extractedSteps = s4;
+            break;
+          }
         }
-        if (steps > 0 && steps < 200000) {
-          ref.read(stepsSupportedProvider.notifier).state = true;
-          _saveAndPush({'steps': steps});
-          return;
-        }
+        if (extractedSteps > 0) break;
+      }
+
+      if (extractedSteps > 0) {
+        ref.read(stepsSupportedProvider.notifier).state = true;
+        _saveAndPush({'steps': extractedSteps});
+        return;
       }
       return;
     }
 
     // ── Unknown Vendor Packet Fallback ─────────────────────────────────────
     // For unrecognized command codes - try to extract steps (little-endian)
-    if (bytes.length >= dataStart + 2) {
-      // Little-endian 2-byte
-      int steps2 = bytes[dataStart] | (bytes[dataStart + 1] << 8);
-      int steps4 = steps2;
-      if (bytes.length >= dataStart + 4) {
-        steps4 = bytes[dataStart] |
-                 (bytes[dataStart + 1] << 8) |
-                 (bytes[dataStart + 2] << 16) |
-                 (bytes[dataStart + 3] << 24);
+    int fallbackSteps = 0;
+    for (int offset = dataStart; offset + 2 <= bytes.length; offset++) {
+      int s2 = bytes[offset] | (bytes[offset + 1] << 8);
+      if (s2 > 0 && s2 < 100000) {
+        fallbackSteps = s2;
       }
-      final steps = bytes.length >= dataStart + 4 ? steps4 : steps2;
-      if (steps > 0 && steps < 100000) {
-        ref.read(stepsSupportedProvider.notifier).state = true;
-        _saveAndPush({'steps': steps});
-        return;
+      if (offset + 4 <= bytes.length) {
+        int s4 = bytes[offset] |
+                 (bytes[offset + 1] << 8) |
+                 (bytes[offset + 2] << 16) |
+                 (bytes[offset + 3] << 24);
+        if (s4 > 0 && s4 < 100000) {
+          fallbackSteps = s4;
+          break;
+        }
       }
+      if (fallbackSteps > 0) break;
+    }
+
+    if (fallbackSteps > 0) {
+      ref.read(stepsSupportedProvider.notifier).state = true;
+      _saveAndPush({'steps': fallbackSteps});
+      return;
     }
   }
 
