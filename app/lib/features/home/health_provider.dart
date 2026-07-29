@@ -113,13 +113,8 @@ class HealthNotifier extends StateNotifier<HealthReading> {
     if (st != null) {
       final int rawWatchSteps = (st as num).toInt();
       if (rawWatchSteps > 0) {
-        if (state.steps == 0 || rawWatchSteps >= state.steps) {
-          validSteps = rawWatchSteps;
-          _baseSteps = rawWatchSteps;
-        } else {
-          final int accumulated = _baseSteps + rawWatchSteps;
-          validSteps = rawWatchSteps > accumulated ? rawWatchSteps : accumulated;
-        }
+        validSteps = rawWatchSteps;
+        _baseSteps = rawWatchSteps;
       }
     }
 

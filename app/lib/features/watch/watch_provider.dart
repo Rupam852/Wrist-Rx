@@ -123,9 +123,16 @@ class WatchNotifier extends StateNotifier<WatchState> {
     }
   }
 
+  Future<void> _sendBleCommand(BluetoothCharacteristic char, List<int> bytes) async {
+    try {
+      final noResp = char.properties.writeWithoutResponse;
+      await char.write(bytes, withoutResponse: noResp);
+      await Future.delayed(const Duration(milliseconds: 30));
+    } catch (_) {}
+  }
+
   /// Sends smart sync probes every cycle:
-  /// - Steps: ALWAYS (live pedometer must update every tick)
-  /// - HR and SpO2: alternate each cycle to avoid flooding
+  /// - Cycles through Step, History, HR, and SpO2 probes cleanly with 30ms delay to avoid Android GATT_BUSY drops
   void _triggerWatchSync() async {
     // 1. Poll readable characteristics continuously for watches that don't auto-notify
     for (final char in _readableCharacteristics) {
@@ -139,45 +146,31 @@ class WatchNotifier extends StateNotifier<WatchState> {
 
     if (_writeCharacteristics.isEmpty) return;
 
-    final cycle = _pingCycle % 2; // Only 2 alternating cycles now
+    final cycle = _pingCycle % 3;
     _pingCycle++;
 
     for (final char in _writeCharacteristics) {
-      try {
-        final noResp = char.properties.writeWithoutResponse;
-
-        // ── ALWAYS: General sync + Steps (pull current & stored step count) ──
-        char.write([0xAB, 0x00, 0x04, 0xFF, 0x31], withoutResponse: noResp).catchError((_) => null);
-        char.write([0xAB, 0x00, 0x04, 0xFF, 0x51], withoutResponse: noResp).catchError((_) => null);
-        char.write([0xAB, 0x51], withoutResponse: noResp).catchError((_) => null);
-        char.write([0xAB, 0x31], withoutResponse: noResp).catchError((_) => null);
-        char.write([0xAB, 0x07], withoutResponse: noResp).catchError((_) => null);
-        char.write([0x55, 0x01], withoutResponse: noResp).catchError((_) => null);
-        char.write([0x55, 0x02], withoutResponse: noResp).catchError((_) => null);
-        char.write([0x55, 0x51], withoutResponse: noResp).catchError((_) => null);
-        char.write([0xAA, 0x01], withoutResponse: noResp).catchError((_) => null);
-        char.write([0xEA, 0x01], withoutResponse: noResp).catchError((_) => null);
-
-        if (cycle == 0) {
-          // Heart Rate probe cycle
-          char.write([0xAB, 0x00, 0x04, 0xFF, 0x52], withoutResponse: noResp).catchError((_) => null);
-          char.write([0xAB, 0x0A], withoutResponse: noResp).catchError((_) => null);
-          char.write([0x55, 0x0A], withoutResponse: noResp).catchError((_) => null);
-        } else {
-          // SpO2 Blood Oxygen probe cycle - covers all known SpO2 command codes
-          char.write([0xAB, 0x00, 0x04, 0xFF, 0x12], withoutResponse: noResp).catchError((_) => null);
-          char.write([0xAB, 0x00, 0x04, 0xFF, 0x11], withoutResponse: noResp).catchError((_) => null);
-          char.write([0xAB, 0x00, 0x04, 0xFF, 0x53], withoutResponse: noResp).catchError((_) => null);
-          char.write([0xAB, 0x12], withoutResponse: noResp).catchError((_) => null);
-          char.write([0xAB, 0x11], withoutResponse: noResp).catchError((_) => null);
-          char.write([0x55, 0x12], withoutResponse: noResp).catchError((_) => null);
-          char.write([0x55, 0x11], withoutResponse: noResp).catchError((_) => null);
-          // Additional SpO2 codes used by many Chinese OEM watches
-          char.write([0xAB, 0x18], withoutResponse: noResp).catchError((_) => null);
-          char.write([0xAB, 0x1B], withoutResponse: noResp).catchError((_) => null);
-          char.write([0x55, 0x18], withoutResponse: noResp).catchError((_) => null);
-        }
-      } catch (_) {}
+      if (cycle == 0) {
+        // Step probe cycle A (FitPro / DaFit / Chinese OEM)
+        await _sendBleCommand(char, [0xAB, 0x00, 0x04, 0xFF, 0x51]);
+        await _sendBleCommand(char, [0xAB, 0x51]);
+        await _sendBleCommand(char, [0x55, 0x51]);
+        await _sendBleCommand(char, [0xAA, 0x01]);
+      } else if (cycle == 1) {
+        // Step probe cycle B (VeryFit / JYou / FastRun / GATT)
+        await _sendBleCommand(char, [0xAB, 0x00, 0x04, 0xFF, 0x31]);
+        await _sendBleCommand(char, [0xAB, 0x31]);
+        await _sendBleCommand(char, [0x55, 0x01]);
+        await _sendBleCommand(char, [0x55, 0x02]);
+        await _sendBleCommand(char, [0xEA, 0x01]);
+      } else {
+        // HR & SpO2 probe cycle
+        await _sendBleCommand(char, [0xAB, 0x00, 0x04, 0xFF, 0x52]);
+        await _sendBleCommand(char, [0xAB, 0x0A]);
+        await _sendBleCommand(char, [0x55, 0x0A]);
+        await _sendBleCommand(char, [0xAB, 0x12]);
+        await _sendBleCommand(char, [0x55, 0x12]);
+      }
     }
   }
 
