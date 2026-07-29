@@ -80,12 +80,18 @@ class WatchNotifier extends StateNotifier<WatchState> {
             if (characteristic.properties.notify || characteristic.properties.indicate) {
               try {
                 await characteristic.setNotifyValue(true);
-                final sub = characteristic.lastValueStream.listen((value) {
+                final sub1 = characteristic.onValueReceived.listen((value) {
                   if (value.isNotEmpty) {
                     _parseBleBytes(value, characteristic.uuid.toString());
                   }
                 });
-                _bleSubscriptions.add(sub);
+                final sub2 = characteristic.lastValueStream.listen((value) {
+                  if (value.isNotEmpty) {
+                    _parseBleBytes(value, characteristic.uuid.toString());
+                  }
+                });
+                _bleSubscriptions.add(sub1);
+                _bleSubscriptions.add(sub2);
               } catch (_) {}
             }
           }
@@ -115,7 +121,7 @@ class WatchNotifier extends StateNotifier<WatchState> {
       final noResp = _writeCharacteristic!.properties.writeWithoutResponse;
       // General Telemetry Sync
       await _writeCharacteristic!.write([0xAB, 0x00, 0x04, 0xFF, 0x31], withoutResponse: noResp);
-      // SpO2 Blood Oxygen Active Measurement Probes (5-byte & 3-byte protocol variants)
+      // SpO2 Blood Oxygen Active Measurement Probes (5-byte, 3-byte, & direct byte protocol variants)
       await _writeCharacteristic!.write([0xAB, 0x00, 0x04, 0xFF, 0x12], withoutResponse: noResp);
       await _writeCharacteristic!.write([0xAB, 0x00, 0x04, 0xFF, 0x11], withoutResponse: noResp);
       await _writeCharacteristic!.write([0xAB, 0x00, 0x04, 0xFF, 0x53], withoutResponse: noResp);
@@ -170,7 +176,33 @@ class WatchNotifier extends StateNotifier<WatchState> {
 
     final u = uuid?.toLowerCase() ?? '';
 
-    // 2. Standard GATT Heart Rate Characteristic (0x2A37 / 0x180D) — ONLY updates Heart Rate
+    // 2. Universal SpO2 Blood Oxygen Detector
+    bool isSpO2Packet = u.contains('2a5e') || u.contains('2a5f') || u.contains('2a60') ||
+                        u.contains('1822') || u.contains('spo2') || u.contains('oximeter') || u.contains('oxygen');
+
+    if (!isSpO2Packet) {
+      for (int i = 0; i < bytes.length; i++) {
+        int b = bytes[i];
+        if (b == 0x12 || b == 0x11 || b == 0x0C || b == 0x27 || b == 0x53 || b == 0x1B || b == 0x18 || b == 0x28) {
+          isSpO2Packet = true;
+          break;
+        }
+      }
+    }
+
+    if (isSpO2Packet) {
+      for (int i = 0; i < bytes.length; i++) {
+        int ox = bytes[i];
+        // Exclude command bytes 0x12, 0x11, 0x53, 0x1B from being treated as ox value if length > 1
+        if (ox >= 70 && ox <= 100) {
+          ref.read(spo2SupportedProvider.notifier).state = true;
+          _saveAndPush({'spo2': ox});
+          return;
+        }
+      }
+    }
+
+    // 3. Standard GATT Heart Rate Characteristic (0x2A37 / 0x180D)
     if (u.contains('2a37') || u.contains('180d')) {
       int flags = bytes[0];
       bool is16Bit = (flags & 0x01) != 0;
@@ -188,7 +220,7 @@ class WatchNotifier extends StateNotifier<WatchState> {
       }
     }
 
-    // 3. Standard GATT Blood Pressure Measurement (0x2A35 / 0x1810) — ONLY updates Blood Pressure
+    // 4. Standard GATT Blood Pressure Measurement (0x2A35 / 0x1810)
     if ((u.contains('2a35') || u.contains('1810')) && bytes.length >= 5) {
       int sys = bytes[1] | (bytes[2] << 8);
       int dia = bytes[3] | (bytes[4] << 8);
@@ -199,19 +231,7 @@ class WatchNotifier extends StateNotifier<WatchState> {
       }
     }
 
-    // 4. Standard GATT Pulse Oximeter / SpO2 Characteristic (0x2A5E / 0x2A5F / 0x2A60 / 0x1822 / spo2 / oximeter / oxygen)
-    if (u.contains('2a5e') || u.contains('2a5f') || u.contains('2a60') || u.contains('1822') || u.contains('spo2') || u.contains('oximeter') || u.contains('oxygen')) {
-      for (int i = 0; i < bytes.length; i++) {
-        int ox = bytes[i];
-        if (ox >= 70 && ox <= 100) {
-          ref.read(spo2SupportedProvider.notifier).state = true;
-          _saveAndPush({'spo2': ox});
-          return;
-        }
-      }
-    }
-
-    // 5. Standard GATT RSC / Pedometer Step Count (0x2A53 / 0x1814) — ONLY updates Steps
+    // 5. Standard GATT RSC / Pedometer Step Count (0x2A53 / 0x1814)
     if ((u.contains('2a53') || u.contains('1814') || u.contains('pedometer') || u.contains('step')) && bytes.length >= 3) {
       int steps = bytes[1] | (bytes[2] << 8);
       if (bytes.length >= 5) {
@@ -224,33 +244,11 @@ class WatchNotifier extends StateNotifier<WatchState> {
       }
     }
 
-    // 6. Universal Smartwatch Vendor Protocol Parser (Supports 3-byte, 5-byte, & variable header packets)
+    // 6. Header-Prefixed Smartwatch Vendor Protocol Parser
     final firstByte = bytes[0];
     if (firstByte == 0xAB || firstByte == 0x55 || firstByte == 0xAA || firstByte == 0xFA || firstByte == 0xFC || firstByte == 0x7C || firstByte == 0x00) {
 
-      // A) Check for SpO2 Command Code at ANY position in header bytes [1..min(4, length-1)]
-      bool isSpO2Cmd = false;
-      for (int i = 1; i < bytes.length && i <= 4; i++) {
-        int c = bytes[i];
-        if (c == 0x12 || c == 0x11 || c == 0x0C || c == 0x27 || c == 0x53 || c == 0x1B || c == 0x18 || c == 0x28) {
-          isSpO2Cmd = true;
-          break;
-        }
-      }
-
-      if (isSpO2Cmd && bytes.length >= 3) {
-        // Scan for SpO2 percentage (70% to 100%) across payload
-        for (int i = 2; i < bytes.length; i++) {
-          int ox = bytes[i];
-          if (ox >= 70 && ox <= 100) {
-            ref.read(spo2SupportedProvider.notifier).state = true;
-            _saveAndPush({'spo2': ox});
-            return;
-          }
-        }
-      }
-
-      // B) Check for Heart Rate Command Code at ANY position in header bytes [1..min(4, length-1)]
+      // Heart Rate Command Code at ANY position in header bytes [1..min(4, length-1)]
       bool isHRCmd = false;
       for (int i = 1; i < bytes.length && i <= 4; i++) {
         int c = bytes[i];
@@ -271,7 +269,7 @@ class WatchNotifier extends StateNotifier<WatchState> {
         }
       }
 
-      // C) Check for Blood Pressure Command Code
+      // Blood Pressure Command Code
       bool isBPCmd = false;
       for (int i = 1; i < bytes.length && i <= 4; i++) {
         if (bytes[i] == 0x52) { isBPCmd = true; break; }
@@ -287,7 +285,7 @@ class WatchNotifier extends StateNotifier<WatchState> {
         }
       }
 
-      // D) Check for Pedometer Steps Command Code
+      // Pedometer Steps Command Code
       bool isStepCmd = false;
       for (int i = 1; i < bytes.length && i <= 4; i++) {
         int c = bytes[i];
