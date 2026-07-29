@@ -94,12 +94,16 @@ class HealthNotifier extends StateNotifier<HealthReading> {
   /// Never overwrite valid calculated measurements with transient 0 values sent during calculation.
   /// For steps: accumulate live watch steps on top of pre-existing app baseline steps.
   void updateFromWatch(Map<String, dynamic> data) {
-    final hr = data['heartRate'] ?? data['bpm'];
-    final sys = data['systolic'] ?? data['sys'];
-    final dia = data['diastolic'] ?? data['dia'];
-    final st = data['steps'];
-    final lat = data['coordinates']?['lat'] ?? data['lat'];
-    final lng = data['coordinates']?['lng'] ?? data['lng'];
+    final Map<String, dynamic> payload = (data['payload'] is Map<String, dynamic>)
+        ? data['payload']
+        : data;
+
+    final hr = payload['heartRate'] ?? payload['bpm'] ?? data['heartRate'] ?? data['bpm'];
+    final sys = payload['systolic'] ?? payload['sys'] ?? data['systolic'] ?? data['sys'];
+    final dia = payload['diastolic'] ?? payload['dia'] ?? data['diastolic'] ?? data['dia'];
+    final st = payload['steps'] ?? data['steps'];
+    final lat = payload['coordinates']?['lat'] ?? payload['lat'] ?? data['coordinates']?['lat'] ?? data['lat'];
+    final lng = payload['coordinates']?['lng'] ?? payload['lng'] ?? data['coordinates']?['lng'] ?? data['lng'];
 
     final double validHr = (hr != null && (hr as num) > 0) ? hr.toDouble() : state.heartRate;
     final double validSys = (sys != null && (sys as num) > 0) ? sys.toDouble() : state.systolic;

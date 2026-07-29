@@ -77,20 +77,20 @@ class WatchNotifier extends StateNotifier<WatchState> {
               } catch (_) {}
             }
 
-            // Enable Notifications / Indications - use onValueReceived only (no duplicate lastValueStream)
+            // Enable Notifications / Indications - attach lastValueStream BEFORE setNotifyValue so initial notification is captured
             if (characteristic.properties.notify || characteristic.properties.indicate) {
               try {
-                await characteristic.setNotifyValue(true);
-                final sub = characteristic.onValueReceived.listen(
+                final sub = characteristic.lastValueStream.listen(
                   (value) {
                     if (value.isNotEmpty) {
                       _parseBleBytes(value, characteristic.uuid.toString());
                     }
                   },
                   onError: (_) {},
-                  cancelOnError: false, // Never cancel stream on byte parsing error!
+                  cancelOnError: false,
                 );
                 _bleSubscriptions.add(sub);
+                await characteristic.setNotifyValue(true);
               } catch (_) {}
             }
           }
@@ -304,64 +304,36 @@ class WatchNotifier extends StateNotifier<WatchState> {
 
     // ── Vendor Pedometer/Steps Response ────────────────────────────────────
     // Command codes: 0x02, 0x07, 0x31, 0x51, 0x01, 0x08, 0x0B, 0x1E
-    // Scan all payload offsets for valid 4-byte or 2-byte little-endian steps
     final bool isStepCmd = (effectiveCmd == 0x02 || effectiveCmd == 0x07 ||
                       effectiveCmd == 0x31 || effectiveCmd == 0x51 ||
                       effectiveCmd == 0x01 || effectiveCmd == 0x08 ||
                       effectiveCmd == 0x0B || effectiveCmd == 0x1E);
 
-    if (isStepCmd) {
-      int extractedSteps = 0;
-      for (int offset = dataStart; offset + 2 <= bytes.length; offset++) {
-        int s2 = bytes[offset] | (bytes[offset + 1] << 8);
-        if (s2 > 0 && s2 < 200000) {
-          extractedSteps = s2;
-        }
-        if (offset + 4 <= bytes.length) {
-          int s4 = bytes[offset] |
-                   (bytes[offset + 1] << 8) |
-                   (bytes[offset + 2] << 16) |
-                   (bytes[offset + 3] << 24);
-          if (s4 > 0 && s4 < 200000) {
-            extractedSteps = s4;
-            break;
-          }
-        }
-        if (extractedSteps > 0) break;
+    int extractedSteps = 0;
+    for (int offset = 0; offset + 2 <= bytes.length; offset++) {
+      // 2-byte Little-Endian & Big-Endian
+      int s2le = bytes[offset] | (bytes[offset + 1] << 8);
+      int s2be = (bytes[offset] << 8) | bytes[offset + 1];
+      
+      if (s2le > 0 && s2le < 200000) {
+        extractedSteps = s2le;
+      } else if (s2be > 0 && s2be < 200000) {
+        extractedSteps = s2be;
       }
 
-      if (extractedSteps > 0) {
-        ref.read(stepsSupportedProvider.notifier).state = true;
-        _saveAndPush({'steps': extractedSteps});
-        return;
-      }
-      return;
-    }
-
-    // ── Unknown Vendor Packet Fallback ─────────────────────────────────────
-    // For unrecognized command codes - try to extract steps (little-endian)
-    int fallbackSteps = 0;
-    for (int offset = dataStart; offset + 2 <= bytes.length; offset++) {
-      int s2 = bytes[offset] | (bytes[offset + 1] << 8);
-      if (s2 > 0 && s2 < 100000) {
-        fallbackSteps = s2;
-      }
+      // 4-byte Little-Endian & Big-Endian
       if (offset + 4 <= bytes.length) {
-        int s4 = bytes[offset] |
-                 (bytes[offset + 1] << 8) |
-                 (bytes[offset + 2] << 16) |
-                 (bytes[offset + 3] << 24);
-        if (s4 > 0 && s4 < 100000) {
-          fallbackSteps = s4;
-          break;
-        }
+        int s4le = bytes[offset] | (bytes[offset + 1] << 8) | (bytes[offset + 2] << 16) | (bytes[offset + 3] << 24);
+        int s4be = (bytes[offset] << 24) | (bytes[offset + 1] << 16) | (bytes[offset + 2] << 8) | bytes[offset + 3];
+        if (s4le > 0 && s4le < 200000) { extractedSteps = s4le; break; }
+        if (s4be > 0 && s4be < 200000) { extractedSteps = s4be; break; }
       }
-      if (fallbackSteps > 0) break;
+      if (extractedSteps > 0 && isStepCmd) break;
     }
 
-    if (fallbackSteps > 0) {
+    if (extractedSteps > 0) {
       ref.read(stepsSupportedProvider.notifier).state = true;
-      _saveAndPush({'steps': fallbackSteps});
+      _saveAndPush({'steps': extractedSteps});
       return;
     }
   }
