@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
     FOREGROUND — Dark/Night Mode
-    White slim watch on transparent background
-    Background (#0D1B2A deep navy) shows behind transparent areas
-    Watch screen is dark (transparent = navy bg shows), ECG+Rx are white
+    Same ECG pulse + Rx symbol but in WHITE
+    Dark background (#0F1923) shows behind transparent areas
+    Auto used when phone is in dark theme
 -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
@@ -11,65 +11,61 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
 
-    <!-- === BAND TOP (white) === -->
+    <!-- ECG PULSE (WHITE on dark background) -->
     <path
-        android:pathData="M42,13 L66,13 Q67,13 67,14 L67,24 L41,24 L41,14 Q41,13 42,13 Z"
-        android:fillColor="#FFFFFF"
-        android:fillAlpha="0.90"/>
-
-    <!-- === WATCH BODY (white) === -->
-    <path
-        android:pathData="M33,24 L75,24 Q79,24 79,28 L79,80 Q79,84 75,84 L33,84 Q29,84 29,80 L29,28 Q29,24 33,24 Z"
-        android:fillColor="#FFFFFF"
-        android:fillAlpha="0.90"/>
-
-    <!-- === WATCH SCREEN (transparent — navy bg shows through) === -->
-    <!-- Screen area left transparent so dark bg creates contrast with white bezel -->
-    <path
-        android:pathData="M35,32 L73,32 Q77,32 77,36 L77,72 Q77,76 73,76 L35,76 Q31,76 31,72 L31,36 Q31,32 35,32 Z"
-        android:fillColor="#0D1B2A"/>
-
-    <!-- === BAND BOTTOM (white) === -->
-    <path
-        android:pathData="M41,84 L67,84 L67,95 Q67,96 66,96 L42,96 Q41,96 41,95 Z"
-        android:fillColor="#FFFFFF"
-        android:fillAlpha="0.90"/>
-
-    <!-- === CROWN BUTTON (white) === -->
-    <path
-        android:pathData="M79,43 L82,43 Q83,43 83,44 L83,52 Q83,53 82,53 L79,53 Z"
-        android:fillColor="#FFFFFF"
-        android:fillAlpha="0.80"/>
-
-    <!-- === ECG PULSE LINE (white on dark screen) === -->
-    <path
-        android:pathData="M31,54 L38,54 L42,44 L47,64 L52,54 L77,54"
+        android:pathData="M16,44 L28,44 L34,28 L42,60 L50,44 L92,44"
         android:strokeColor="#FFFFFF"
-        android:strokeWidth="2.5"
+        android:strokeWidth="4.5"
         android:strokeLineCap="round"
         android:strokeLineJoin="round"
         android:fillColor="@android:color/transparent"/>
 
-    <!-- === Rx SYMBOL (white) === -->
-    <!-- R -->
+    <!-- R — vertical stem (WHITE) -->
     <path
-        android:pathData="M35,63 L35,74"
+        android:pathData="M33,64 L33,84"
         android:strokeColor="#FFFFFF"
-        android:strokeWidth="2.2"
+        android:strokeWidth="4"
         android:strokeLineCap="round"
         android:fillColor="@android:color/transparent"/>
+
+    <!-- R — top arch (WHITE) -->
     <path
-        android:pathData="M35,63 L40,63 Q43,63 43,66.5 Q43,70 40,70 L35,70 M40,70 L43,74"
+        android:pathData="M33,64 L43,64 Q49,64 49,70 Q49,76 43,76 L33,76"
         android:strokeColor="#FFFFFF"
-        android:strokeWidth="2.2"
+        android:strokeWidth="4"
         android:strokeLineCap="round"
         android:strokeLineJoin="round"
         android:fillColor="@android:color/transparent"/>
-    <!-- x -->
+
+    <!-- R — diagonal leg (WHITE) -->
     <path
-        android:pathData="M48,64 L54,74 M54,64 L48,74"
+        android:pathData="M43,76 L50,84"
         android:strokeColor="#FFFFFF"
-        android:strokeWidth="2.2"
+        android:strokeWidth="4"
+        android:strokeLineCap="round"
+        android:fillColor="@android:color/transparent"/>
+
+    <!-- x — diagonal \ (WHITE) -->
+    <path
+        android:pathData="M57,65 L69,83"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="4"
+        android:strokeLineCap="round"
+        android:fillColor="@android:color/transparent"/>
+
+    <!-- x — diagonal / (WHITE) -->
+    <path
+        android:pathData="M69,65 L57,83"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="4"
+        android:strokeLineCap="round"
+        android:fillColor="@android:color/transparent"/>
+
+    <!-- Rx medical slash (WHITE) -->
+    <path
+        android:pathData="M65,80 L72,84"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="3"
         android:strokeLineCap="round"
         android:fillColor="@android:color/transparent"/>
 
