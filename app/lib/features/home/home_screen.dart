@@ -613,7 +613,7 @@ class _SosButton extends ConsumerWidget {
     if (phoneNumbers.isNotEmpty) {
       final firstPhone = phoneNumbers.first.replaceAll(RegExp(r'[^\d+]'), '');
       
-      // 1. Try SMS URI Scheme (Opens Messaging App pre-filled)
+      // 1. Try SMS Intent (Direct Launch)
       final smsUri = Uri(
         scheme: 'sms',
         path: firstPhone,
@@ -623,20 +623,16 @@ class _SosButton extends ConsumerWidget {
       );
 
       try {
-        if (await canLaunchUrl(smsUri)) {
-          await launchUrl(smsUri);
-          actionDispatched = true;
-        }
-      } catch (_) {}
+        actionDispatched = await launchUrl(smsUri, mode: LaunchMode.externalApplication);
+      } catch (_) {
+        actionDispatched = false;
+      }
 
       // 2. Fallback: WhatsApp URI
       if (!actionDispatched) {
         final waUri = Uri.parse('https://wa.me/$firstPhone?text=${Uri.encodeComponent(sosMsg)}');
         try {
-          if (await canLaunchUrl(waUri)) {
-            await launchUrl(waUri, mode: LaunchMode.externalApplication);
-            actionDispatched = true;
-          }
+          actionDispatched = await launchUrl(waUri, mode: LaunchMode.externalApplication);
         } catch (_) {}
       }
     }
