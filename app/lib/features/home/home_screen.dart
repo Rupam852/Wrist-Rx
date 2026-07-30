@@ -246,16 +246,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
                     pulseController: _pulseController,
                     smallValue: isConnected && !isStepsSupported,
                   ),
-                  // 5. GPS Location
-                  _MetricCard(
-                    gradient: AppColors.gpsGradient,
-                    icon: Icons.location_on_rounded,
-                    title: 'GPS Location',
-                    value: hasGps ? health.lat!.toStringAsFixed(3) : '--',
-                    unit: hasGps ? health.lng!.toStringAsFixed(3) : 'lat/lng',
-                    isPulsing: isConnected && hasGps,
-                    pulseController: _pulseController,
-                    smallValue: true,
+                  // 5. GPS Location (Tap to view/share map link)
+                  GestureDetector(
+                    onTap: hasGps ? () => showLocationShareDialog(context, health.lat!, health.lng!) : null,
+                    child: _MetricCard(
+                      gradient: AppColors.gpsGradient,
+                      icon: Icons.location_on_rounded,
+                      title: 'GPS Location (Tap)',
+                      value: hasGps ? health.lat!.toStringAsFixed(3) : '--',
+                      unit: hasGps ? 'Tap to share' : 'lat/lng',
+                      isPulsing: isConnected && hasGps,
+                      pulseController: _pulseController,
+                      smallValue: true,
+                    ),
                   ),
                 ],
               ).animate().fadeIn(delay: 200.ms),
@@ -370,6 +373,93 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
     );
   }
 }
+
+void showLocationShareDialog(BuildContext context, double lat, double lng) {
+    final mapsUrl = 'https://maps.google.com/?q=$lat,$lng';
+    showDialog(
+      context: context,
+      builder: (popCtx) => AlertDialog(
+        backgroundColor: AppColors.cardDark,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Icon(Icons.location_on_rounded, color: AppColors.primary, size: 26),
+            SizedBox(width: 8),
+            Text('GPS Location Share', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700)),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Google Maps Location Link:',
+              style: TextStyle(color: Colors.white70, fontSize: 13),
+            ),
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.black26,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.primary.withOpacity(0.3)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.link_rounded, color: AppColors.primary, size: 20),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      mapsUrl,
+                      style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w500),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.copy_rounded, color: Colors.white70, size: 18),
+                    tooltip: 'Copy Link',
+                    onPressed: () {
+                      Clipboard.setData(ClipboardData(text: mapsUrl));
+                      TopToast.show(
+                        context,
+                        title: 'Link Copied',
+                        message: 'Google Maps link copied to clipboard!',
+                        type: TopToastType.success,
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              'Coordinates: ${lat.toStringAsFixed(6)}, ${lng.toStringAsFixed(6)}',
+              style: TextStyle(color: AppColors.onSurfaceDark, fontSize: 12),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(popCtx).pop(),
+            child: const Text('Cancel', style: TextStyle(color: Colors.white54, fontWeight: FontWeight.w600)),
+          ),
+          FilledButton.icon(
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            onPressed: () {
+              Navigator.of(popCtx).pop();
+              Share.share('🚨 My Emergency GPS Location: $mapsUrl');
+            },
+            icon: const Icon(Icons.share_rounded, size: 18),
+            label: const Text('Share Location', style: TextStyle(fontWeight: FontWeight.w700)),
+          ),
+        ],
+      ),
+    );
+  }
 
 class _ConnectWatchBanner extends ConsumerWidget {
   @override
@@ -730,26 +820,34 @@ class _SosButton extends ConsumerWidget {
                   style: TextStyle(color: Colors.white70, fontSize: 13, height: 1.4)),
               const SizedBox(height: 12),
               if (lat != null && lng != null)
-                InkWell(
-                  onTap: () => _showLocationShareDialog(context, lat!, lng!),
-                  borderRadius: BorderRadius.circular(8),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: AppColors.primary.withOpacity(0.12),
+                Material(
+                  color: Colors.transparent,
+                  child: GestureDetector(
+                    onTap: () => showLocationShareDialog(context, lat!, lng!),
+                    child: InkWell(
+                      onTap: () => showLocationShareDialog(context, lat!, lng!),
                       borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: AppColors.primary.withOpacity(0.3)),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          '📍 Location: ${lat.toStringAsFixed(4)}, ${lng.toStringAsFixed(4)}',
-                          style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w700, fontSize: 13),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withOpacity(0.18),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: AppColors.primary.withOpacity(0.4), width: 1.5),
                         ),
-                        const SizedBox(width: 6),
-                        const Icon(Icons.share_rounded, color: AppColors.primary, size: 16),
-                      ],
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.location_on_rounded, color: AppColors.primary, size: 18),
+                            const SizedBox(width: 6),
+                            Text(
+                              'Location: ${lat.toStringAsFixed(4)}, ${lng.toStringAsFixed(4)}',
+                              style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w700, fontSize: 13),
+                            ),
+                            const SizedBox(width: 8),
+                            const Icon(Icons.share_rounded, color: AppColors.primary, size: 16),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
                 ),
@@ -778,89 +876,5 @@ class _SosButton extends ConsumerWidget {
         ),
       );
     }
-  }
-
-  void _showLocationShareDialog(BuildContext context, double lat, double lng) {
-    final mapsUrl = 'https://maps.google.com/?q=$lat,$lng';
-    showDialog(
-      context: context,
-      builder: (popCtx) => AlertDialog(
-        backgroundColor: AppColors.cardDark,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Row(
-          children: [
-            Icon(Icons.location_on_rounded, color: AppColors.primary, size: 26),
-            SizedBox(width: 8),
-            Text('GPS Location Share', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700)),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Google Maps Location Link:',
-              style: TextStyle(color: Colors.white70, fontSize: 13),
-            ),
-            const SizedBox(height: 8),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.black26,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppColors.primary.withOpacity(0.3)),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.link_rounded, color: AppColors.primary, size: 20),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      mapsUrl,
-                      style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w500),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.copy_rounded, color: Colors.white70, size: 18),
-                    tooltip: 'Copy Link',
-                    onPressed: () {
-                      Clipboard.setData(ClipboardData(text: mapsUrl));
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('📋 Location link copied to clipboard!')),
-                      );
-                    },
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 10),
-            Text(
-              'Coordinates: ${lat.toStringAsFixed(6)}, ${lng.toStringAsFixed(6)}',
-              style: TextStyle(color: AppColors.onSurfaceDark, fontSize: 12),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(popCtx).pop(),
-            child: const Text('Cancel', style: TextStyle(color: Colors.white54, fontWeight: FontWeight.w600)),
-          ),
-          FilledButton.icon(
-            style: FilledButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            ),
-            onPressed: () {
-              Navigator.of(popCtx).pop();
-              Share.share('🚨 My Emergency GPS Location: $mapsUrl');
-            },
-            icon: const Icon(Icons.share_rounded, size: 18),
-            label: const Text('Share Location', style: TextStyle(fontWeight: FontWeight.w700)),
-          ),
-        ],
-      ),
-    );
   }
 }
