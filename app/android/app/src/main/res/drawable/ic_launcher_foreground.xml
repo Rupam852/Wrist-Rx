@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    FOREGROUND LAYER for Wrist Rx Adaptive Icon
+    Design: All-white elements on transparent background
+    - Watch body: white fill
+    - Watch screen: TRANSPARENT (background gradient shows through)
+    - ECG line: white, thick (3dp) — always visible on any background
+    - Rx symbol: white, bold
+
+    This ensures visibility in ALL modes:
+      Light mode  → white watch on teal shimmer
+      Dark mode   → white watch on deep navy
+      Monochrome  → system tints white elements, transparent areas show bg color
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- ===== WATCH BODY (white) ===== -->
+    <path
+        android:pathData="M36,26 L72,26 Q78,26 78,32 L78,76 Q78,82 72,82 L36,82 Q30,82 30,76 L30,32 Q30,26 36,26 Z"
+        android:fillColor="#FFFFFF"
+        android:fillAlpha="0.95" />
+
+    <!-- ===== WATCH SCREEN BORDER (slight inset, transparent center) ===== -->
+    <!-- This creates a visible border around the screen area -->
+    <path
+        android:pathData="M37,35 L71,35 Q75,35 75,39 L75,69 Q75,73 71,73 L37,73 Q33,73 33,69 L33,39 Q33,35 37,35 Z"
+        android:fillColor="#FFFFFF"
+        android:fillAlpha="0.15" />
+
+    <!-- ===== WATCH SCREEN INNER (fully transparent — background shows through) ===== -->
+    <!-- We intentionally leave this transparent so the gradient bg is visible -->
+
+    <!-- ===== WATCH BAND TOP ===== -->
+    <path
+        android:pathData="M42,18 L66,18 Q67,18 67,19 L67,26 L41,26 L41,19 Q41,18 42,18 Z"
+        android:fillColor="#FFFFFF"
+        android:fillAlpha="0.90" />
+
+    <!-- ===== WATCH BAND BOTTOM ===== -->
+    <path
+        android:pathData="M41,82 L67,82 L67,90 Q67,91 66,91 L42,91 Q41,91 41,90 Z"
+        android:fillColor="#FFFFFF"
+        android:fillAlpha="0.90" />
+
+    <!-- ===== WATCH CROWN (side button) ===== -->
+    <path
+        android:pathData="M78,44 L80,44 Q81,44 81,45 L81,51 Q81,52 80,52 L78,52 Z"
+        android:fillColor="#FFFFFF"
+        android:fillAlpha="0.70" />
+
+    <!-- ===== ECG / PULSE LINE (white, thick — always visible) ===== -->
+    <path
+        android:pathData="M33,54 L40,54 L44,42 L48,66 L52,54 L56,48 L60,60 L64,54 L75,54"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="3.0"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:fillColor="@android:color/transparent" />
+
+    <!-- ===== Rx SYMBOL (white, bold — clearly visible) ===== -->
+    <!-- R letter -->
+    <path
+        android:pathData="M40,65 L40,74 M40,65 L45,65 Q48,65 48,68 Q48,71 45,71 L40,71 M45,71 L48,74"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="2.2"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:fillColor="@android:color/transparent" />
+
+    <!-- x letter -->
+    <path
+        android:pathData="M52,66 L57,74 M57,66 L52,74"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="2.2"
+        android:strokeLineCap="round"
+        android:fillColor="@android:color/transparent" />
+
+    <!-- ===== SPARKLE DOTS (white glow) ===== -->
+    <!-- Top-left sparkle -->
+    <path
+        android:pathData="M32,28 a1.2,1.2 0 1,0 2.4,0 a1.2,1.2 0 1,0 -2.4,0"
+        android:fillColor="#FFFFFF"
+        android:fillAlpha="0.5" />
+
+    <!-- Top-right sparkle -->
+    <path
+        android:pathData="M74,29 a1.0,1.0 0 1,0 2.0,0 a1.0,1.0 0 1,0 -2.0,0"
+        android:fillColor="#FFFFFF"
+        android:fillAlpha="0.4" />
+
+    <!-- Bottom-right sparkle -->
+    <path
+        android:pathData="M73,79 a1.1,1.1 0 1,0 2.2,0 a1.1,1.1 0 1,0 -2.2,0"
+        android:fillColor="#FFFFFF"
+        android:fillAlpha="0.35" />
+
+</vector>

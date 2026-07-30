@@ -68,23 +68,58 @@ async function callGeminiSingle(apiKey, model, messages) {
   });
 }
 
-// Helper: call Gemini API with auto fallback on 429 Quota limit
-async function callGemini(apiKey, model, messages) {
-  const primaryModel = model || 'gemini-2.0-flash';
-  let response = await callGeminiSingle(apiKey, primaryModel, messages);
+// AUTO_MODEL_CHAIN — tested & confirmed with real API key (2026-07-30)
+// ✅ gemini-flash-latest    => OK (always points to latest flash)
+// ✅ gemini-3.1-flash-lite  => OK (confirmed working)
+// ⚠️ gemini-3.5-flash       => 503 temp (try as fallback)
+// ⚠️ gemini-2.0-flash       => 429 quota (fallback when quota resets)
+// ⚠️ gemini-2.0-flash-lite  => 429 quota (last resort)
+const AUTO_MODEL_CHAIN = [
+  'gemini-flash-latest',    // ✅ PRIMARY — always latest, confirmed working
+  'gemini-3.1-flash-lite',  // ✅ FALLBACK 1 — confirmed working
+  'gemini-3.5-flash',       // ⚠️ FALLBACK 2 — sometimes available
+  'gemini-2.0-flash',       // ⚠️ FALLBACK 3 — exists, may hit quota
+  'gemini-2.0-flash-lite',  // ⚠️ FALLBACK 4 — exists, lighter model
+];
 
-  // If 429 Quota limit hit, attempt auto-fallback to alternative Gemini models
-  if (response.startsWith('⚠️ Quota Limit') || response.includes('429')) {
-    const fallbackModels = ['gemini-1.5-flash', 'gemini-2.0-flash-lite', 'gemini-1.5-pro'].filter(m => m !== primaryModel);
-    for (const fbModel of fallbackModels) {
-      const fbResp = await callGeminiSingle(apiKey, fbModel, messages);
-      if (!fbResp.startsWith('⚠️ Quota Limit') && !fbResp.startsWith('⚠️ Gemini API Error') && !fbResp.startsWith('⚠️ API Key Error')) {
-        return fbResp; // Fallback model succeeded!
+// Check if a response is an error (not a real AI response)
+function isErrorResponse(resp) {
+  return resp.startsWith('⚠️');
+}
+
+// Helper: call Gemini API with smart auto-fallback
+async function callGemini(apiKey, model, messages) {
+  // AUTO MODE: try the latest models in priority order
+  if (!model || model === 'auto') {
+    let lastError = '';
+    for (const autoModel of AUTO_MODEL_CHAIN) {
+      const resp = await callGeminiSingle(apiKey, autoModel, messages);
+      if (!isErrorResponse(resp)) {
+        return resp; // ✅ Success — return first working model's response
       }
+      // Stop on API key errors (no point trying other models)
+      if (resp.includes('API Key Error') || resp.includes('Invalid API key')) {
+        return resp;
+      }
+      lastError = resp;
+      // Continue to next model on quota/not-found errors
     }
-    return '⚠️ Quota Limit (429): Free Gemini API rate limit reached across all models. Please wait 1 minute or generate a new free key at aistudio.google.com.';
+    // All models failed
+    return `⚠️ All Gemini models failed. Last error: ${lastError}\n\nPlease check your API key at aistudio.google.com`;
   }
-  return response;
+
+  // CUSTOM / SPECIFIC MODEL MODE: try given model, fallback on quota
+  const resp = await callGeminiSingle(apiKey, model, messages);
+  if (isErrorResponse(resp) && (resp.includes('Quota Limit') || resp.includes('429'))) {
+    // Fallback chain for quota errors on specific models
+    const fallbacks = AUTO_MODEL_CHAIN.filter(m => m !== model);
+    for (const fbModel of fallbacks) {
+      const fbResp = await callGeminiSingle(apiKey, fbModel, messages);
+      if (!isErrorResponse(fbResp)) return fbResp;
+    }
+    return '⚠️ Quota Limit (429): Rate limit reached across all models. Please wait 1 minute or get a new free key at aistudio.google.com.';
+  }
+  return resp;
 }
 
 // POST /api/ai/chat — Send message & get AI response

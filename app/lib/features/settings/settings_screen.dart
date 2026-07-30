@@ -21,14 +21,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   bool _apiKeyObscured = true;
   bool _isSavingKey = false;
   bool _isCleaningData = false;
-  String _selectedModel = 'gemini-2.0-flash';
+  String _selectedModel = 'auto';
   bool _isLoadingKey = true;
 
+  // Only 2 options: Auto (smart fallback) and Custom (user-defined)
   final _models = [
-    ('gemini-2.0-flash-lite', 'Gemini Flash Lite Latest'),
-    ('gemini-2.5-flash-lite', 'Gemini 2.5 Flash Lite'),
-    ('gemini-2.0-flash', 'Gemini Flash Latest'),
-    ('gemini-2.5-flash', 'Gemini 2.5 Flash'),
+    ('auto', 'Auto (Recommended)'),
     ('custom', 'Custom Model'),
   ];
 
@@ -39,7 +37,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     super.initState();
     _loadKey();
     final user = ref.read(userModelProvider);
-    _selectedModel = user?.settings.aiModel ?? 'gemini-2.0-flash';
+    _selectedModel = user?.settings.aiModel ?? 'auto';
   }
 
   Future<void> _loadKey() async {
@@ -58,8 +56,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     // Also save model to backend
     final user = ref.read(userModelProvider);
     if (user != null) {
-      final newSettings = user.settings.copyWith(aiModel: _selectedModel == 'custom'
-          ? _customModelController.text.trim() : _selectedModel);
+      final modelToSave = _selectedModel == 'custom'
+          ? _customModelController.text.trim()
+          : 'auto'; // 'auto' tells backend to pick best model
+      final newSettings = user.settings.copyWith(aiModel: modelToSave);
       await ref.read(userModelProvider.notifier).updateSettings(newSettings);
     }
     setState(() => _isSavingKey = false);
@@ -202,6 +202,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text('Select AI Model', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14)),
+                const SizedBox(height: 4),
+                Text(
+                  'Auto uses the latest Gemini model and falls back automatically if one fails.',
+                  style: TextStyle(color: AppColors.onSurfaceDark, fontSize: 11),
+                ),
                 const SizedBox(height: 12),
                 ..._models.map((m) => GestureDetector(
                   onTap: () => setState(() => _selectedModel = m.$1),
@@ -220,9 +225,29 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       Icon(_selectedModel == m.$1 ? Icons.radio_button_checked : Icons.radio_button_unchecked,
                           color: _selectedModel == m.$1 ? AppColors.primary : Colors.white30, size: 18),
                       const SizedBox(width: 10),
-                      Expanded(child: Text(m.$2, style: TextStyle(
-                        color: _selectedModel == m.$1 ? Colors.white : AppColors.onSurfaceDark,
-                        fontSize: 13, fontWeight: FontWeight.w500))),
+                      Expanded(child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(m.$2, style: TextStyle(
+                            color: _selectedModel == m.$1 ? Colors.white : AppColors.onSurfaceDark,
+                            fontSize: 13, fontWeight: FontWeight.w500)),
+                          if (m.$1 == 'auto')
+                            Text('gemini-2.5-flash → 2.0-flash → fallback',
+                              style: TextStyle(color: AppColors.onSurfaceDark, fontSize: 10)),
+                          if (m.$1 == 'custom')
+                            Text('Enter any Gemini model name manually',
+                              style: TextStyle(color: AppColors.onSurfaceDark, fontSize: 10)),
+                        ],
+                      )),
+                      if (m.$1 == 'auto')
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Colors.green.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: const Text('Smart', style: TextStyle(color: Colors.green, fontSize: 10, fontWeight: FontWeight.w700)),
+                        ),
                     ]),
                   ),
                 )),
@@ -232,8 +257,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     controller: _customModelController,
                     style: const TextStyle(color: Colors.white),
                     decoration: const InputDecoration(
-                      hintText: 'Enter model name (e.g. gemini-pro)',
+                      hintText: 'e.g. gemini-2.5-pro or gemini-2.0-flash',
                       prefixIcon: Icon(Icons.edit_rounded, color: AppColors.primary),
+                      helperText: 'Find model names at aistudio.google.com',
+                      helperStyle: TextStyle(color: Colors.white38, fontSize: 11),
                     ),
                   ),
                 ],

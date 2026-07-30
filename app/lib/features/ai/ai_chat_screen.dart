@@ -34,7 +34,7 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
     setState(() => _isSending = true);
 
     final user = ref.read(userModelProvider);
-    final model = user?.settings.aiModel ?? 'gemini-2.0-flash';
+    final model = user?.settings.aiModel ?? 'auto';
 
     await ref.read(aiMessagesProvider.notifier).sendMessage(text, model);
     setState(() => _isSending = false);
