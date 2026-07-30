@@ -53,6 +53,7 @@ dependencies:
   uuid: ^4.5.1
   flutter_foreground_task: ^10.0.0
   url_launcher: ^6.3.1     # SMS & WhatsApp intent fallback for SOS
+  share_plus: ^10.0.0      # Native location share sheet
 
 dev_dependencies:
   flutter_test:
