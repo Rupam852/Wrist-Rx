@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/services/storage_service.dart';
@@ -341,6 +342,32 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   onTap: () => _showAddContactDialog(context),
                 ),
               ],
+            ),
+          ),
+          const SizedBox(height: 24),
+
+          // ── About App ──────────────────────────────────
+          _SectionHeader('ℹ️ About App'),
+          Container(
+            decoration: BoxDecoration(
+              color: AppColors.cardDark,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.white.withOpacity(0.07)),
+            ),
+            child: ListTile(
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              leading: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.info_outline_rounded, color: AppColors.primary, size: 22),
+              ),
+              title: const Text('About Wrist Rx', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 15)),
+              subtitle: Text('App version, developer info & contributors', style: TextStyle(color: AppColors.onSurfaceDark, fontSize: 12)),
+              trailing: const Icon(Icons.chevron_right_rounded, color: Colors.white38),
+              onTap: () => context.push('/about'),
             ),
           ),
           const SizedBox(height: 24),
