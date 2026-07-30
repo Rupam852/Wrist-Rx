@@ -5,6 +5,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/services/api_service.dart';
 import '../../core/constants/api_constants.dart';
@@ -596,10 +597,49 @@ class _SosButton extends ConsumerWidget {
       });
     } catch (_) {}
 
-    // 4. Get User Emergency Contacts
+    // 4. Get User Emergency Contacts & Dispatch Alerts
     final user = ref.read(userModelProvider);
     final contacts = user?.settings.emergencyContacts ?? [];
     final contactNames = contacts.map((c) => c.name).join(', ');
+    final phoneNumbers = contacts.map((c) => c.phone).where((p) => p.isNotEmpty).toList();
+
+    String locationUrl = '';
+    if (lat != null && lng != null) {
+      locationUrl = ' https://maps.google.com/?q=$lat,$lng';
+    }
+    final sosMsg = '🚨 EMERGENCY SOS ALERT! I need immediate help! My Location:$locationUrl';
+
+    bool actionDispatched = false;
+    if (phoneNumbers.isNotEmpty) {
+      final firstPhone = phoneNumbers.first.replaceAll(RegExp(r'[^\d+]'), '');
+      
+      // 1. Try SMS URI Scheme (Opens Messaging App pre-filled)
+      final smsUri = Uri(
+        scheme: 'sms',
+        path: firstPhone,
+        queryParameters: <String, String>{
+          'body': sosMsg,
+        },
+      );
+
+      try {
+        if (await canLaunchUrl(smsUri)) {
+          await launchUrl(smsUri);
+          actionDispatched = true;
+        }
+      } catch (_) {}
+
+      // 2. Fallback: WhatsApp URI
+      if (!actionDispatched) {
+        final waUri = Uri.parse('https://wa.me/$firstPhone?text=${Uri.encodeComponent(sosMsg)}');
+        try {
+          if (await canLaunchUrl(waUri)) {
+            await launchUrl(waUri, mode: LaunchMode.externalApplication);
+            actionDispatched = true;
+          }
+        } catch (_) {}
+      }
+    }
 
     if (context.mounted) {
       showDialog(
@@ -610,26 +650,29 @@ class _SosButton extends ConsumerWidget {
           title: const Row(children: [
             Icon(Icons.check_circle_rounded, color: Colors.green, size: 28),
             SizedBox(width: 10),
-            Text('SOS Sent Successfully!', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700)),
+            Text('SOS Triggered!', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700)),
           ]),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('🚨 Emergency alert broadcasted to backend & registered contacts.',
+              const Text('🚨 Emergency alert logged & broadcasted.',
                   style: TextStyle(color: Colors.white70, fontSize: 13, height: 1.4)),
               const SizedBox(height: 12),
               if (lat != null && lng != null)
-                Text('📍 GPS Location: ${lat.toStringAsFixed(4)}, ${lng.toStringAsFixed(4)}',
+                Text('📍 Location: ${lat.toStringAsFixed(4)}, ${lng.toStringAsFixed(4)}',
                     style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600, fontSize: 13)),
               if (contacts.isNotEmpty) ...[
                 const SizedBox(height: 8),
-                Text('👥 Contacts Notified: $contactNames',
+                Text('👥 Contacts: $contactNames',
                     style: const TextStyle(color: Colors.white, fontSize: 13)),
+                const SizedBox(height: 4),
+                Text(actionDispatched ? '📱 Opening Messages/WhatsApp app...' : '⚠️ Please manually alert your contacts.',
+                    style: TextStyle(color: actionDispatched ? Colors.greenAccent : Colors.amber, fontSize: 12, fontWeight: FontWeight.w600)),
               ],
               if (contacts.isEmpty) ...[
                 const SizedBox(height: 8),
-                const Text('⚠️ Note: You have not added emergency contacts yet. Please add contacts in Settings → SOS.',
+                const Text('⚠️ Note: No emergency contacts configured yet. Add them in Settings → SOS.',
                     style: TextStyle(color: Colors.amber, fontSize: 12)),
               ],
             ],
