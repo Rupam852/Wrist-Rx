@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-    FOREGROUND — Light Mode (default)
-    Dark/black slim watch on transparent background
-    Background (#F0F4F8 soft white) shows behind transparent areas
-    Watch screen is white (bezel contrast), ECG+Rx are dark
+    FOREGROUND — Dark/Night Mode
+    White slim watch on transparent background
+    Background (#0D1B2A deep navy) shows behind transparent areas
+    Watch screen is dark (transparent = navy bg shows), ECG+Rx are white
 -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
@@ -11,52 +11,56 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
 
-    <!-- === BAND TOP === -->
+    <!-- === BAND TOP (white) === -->
     <path
         android:pathData="M42,13 L66,13 Q67,13 67,14 L67,24 L41,24 L41,14 Q41,13 42,13 Z"
-        android:fillColor="#1C2B3A"/>
+        android:fillColor="#FFFFFF"
+        android:fillAlpha="0.90"/>
 
-    <!-- === WATCH BODY (slim, dark charcoal) === -->
+    <!-- === WATCH BODY (white) === -->
     <path
         android:pathData="M33,24 L75,24 Q79,24 79,28 L79,80 Q79,84 75,84 L33,84 Q29,84 29,80 L29,28 Q29,24 33,24 Z"
-        android:fillColor="#1C2B3A"/>
+        android:fillColor="#FFFFFF"
+        android:fillAlpha="0.90"/>
 
-    <!-- === WATCH SCREEN (white — bezel contrast) === -->
+    <!-- === WATCH SCREEN (transparent — navy bg shows through) === -->
+    <!-- Screen area left transparent so dark bg creates contrast with white bezel -->
     <path
         android:pathData="M35,32 L73,32 Q77,32 77,36 L77,72 Q77,76 73,76 L35,76 Q31,76 31,72 L31,36 Q31,32 35,32 Z"
-        android:fillColor="#FFFFFF"/>
+        android:fillColor="#0D1B2A"/>
 
-    <!-- === BAND BOTTOM === -->
+    <!-- === BAND BOTTOM (white) === -->
     <path
         android:pathData="M41,84 L67,84 L67,95 Q67,96 66,96 L42,96 Q41,96 41,95 Z"
-        android:fillColor="#1C2B3A"/>
+        android:fillColor="#FFFFFF"
+        android:fillAlpha="0.90"/>
 
-    <!-- === CROWN BUTTON (right side) === -->
+    <!-- === CROWN BUTTON (white) === -->
     <path
         android:pathData="M79,43 L82,43 Q83,43 83,44 L83,52 Q83,53 82,53 L79,53 Z"
-        android:fillColor="#1C2B3A"/>
+        android:fillColor="#FFFFFF"
+        android:fillAlpha="0.80"/>
 
-    <!-- === ECG PULSE LINE (dark, on white screen) === -->
-    <!-- Simple clean 3-peak heartbeat, 2.5dp -->
+    <!-- === ECG PULSE LINE (white on dark screen) === -->
     <path
         android:pathData="M31,54 L38,54 L42,44 L47,64 L52,54 L77,54"
-        android:strokeColor="#1C2B3A"
+        android:strokeColor="#FFFFFF"
         android:strokeWidth="2.5"
         android:strokeLineCap="round"
         android:strokeLineJoin="round"
         android:fillColor="@android:color/transparent"/>
 
-    <!-- === Rx SYMBOL (dark, below ECG) === -->
+    <!-- === Rx SYMBOL (white) === -->
     <!-- R -->
     <path
         android:pathData="M35,63 L35,74"
-        android:strokeColor="#1C2B3A"
+        android:strokeColor="#FFFFFF"
         android:strokeWidth="2.2"
         android:strokeLineCap="round"
         android:fillColor="@android:color/transparent"/>
     <path
         android:pathData="M35,63 L40,63 Q43,63 43,66.5 Q43,70 40,70 L35,70 M40,70 L43,74"
-        android:strokeColor="#1C2B3A"
+        android:strokeColor="#FFFFFF"
         android:strokeWidth="2.2"
         android:strokeLineCap="round"
         android:strokeLineJoin="round"
@@ -64,7 +68,7 @@
     <!-- x -->
     <path
         android:pathData="M48,64 L54,74 M54,64 L48,74"
-        android:strokeColor="#1C2B3A"
+        android:strokeColor="#FFFFFF"
         android:strokeWidth="2.2"
         android:strokeLineCap="round"
         android:fillColor="@android:color/transparent"/>

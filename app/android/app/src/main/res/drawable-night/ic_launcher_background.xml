@@ -1,17 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-    DARK THEME BACKGROUND for Wrist Rx Adaptive Icon
-    Deep navy-to-midnight gradient for dark mode
-    Used on Android devices in Dark mode
+    BACKGROUND — Dark/Night Mode
+    Deep navy — automatically used when phone is in dark theme
 -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android"
     android:shape="rectangle">
-    <gradient
-        android:type="linear"
-        android:angle="135"
-        android:startColor="#050D1A"
-        android:centerColor="#0A2233"
-        android:endColor="#0D3A52"
-        android:centerX="0.5"
-        android:centerY="0.5" />
+    <solid android:color="#0D1B2A"/>
 </shape>
