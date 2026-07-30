@@ -1,16 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-    FOREGROUND LAYER for Wrist Rx Adaptive Icon
-    Design: All-white elements on transparent background
-    - Watch body: white fill
-    - Watch screen: TRANSPARENT (background gradient shows through)
-    - ECG line: white, thick (3dp) — always visible on any background
-    - Rx symbol: white, bold
-
-    This ensures visibility in ALL modes:
-      Light mode  → white watch on teal shimmer
-      Dark mode   → white watch on deep navy
-      Monochrome  → system tints white elements, transparent areas show bg color
+    FOREGROUND — Wrist Rx Adaptive Icon
+    Design: Watch body (white) + Dark screen fill + THICK white ECG + Bold Rx
+    Screen is NOT transparent — filled with dark color so ECG always contrasts
 -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
@@ -18,84 +10,94 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
 
-    <!-- ===== WATCH BODY (white) ===== -->
+    <!-- ═══ WATCH BAND TOP ═══ -->
     <path
-        android:pathData="M36,26 L72,26 Q78,26 78,32 L78,76 Q78,82 72,82 L36,82 Q30,82 30,76 L30,32 Q30,26 36,26 Z"
+        android:pathData="M42,14 L66,14 Q67.5,14 67.5,15.5 L67.5,26 L40.5,26 L40.5,15.5 Q40.5,14 42,14 Z"
         android:fillColor="#FFFFFF"
-        android:fillAlpha="0.95" />
+        android:fillAlpha="0.92"/>
 
-    <!-- ===== WATCH SCREEN BORDER (slight inset, transparent center) ===== -->
-    <!-- This creates a visible border around the screen area -->
+    <!-- ═══ WATCH BODY (outer rounded rect) ═══ -->
     <path
-        android:pathData="M37,35 L71,35 Q75,35 75,39 L75,69 Q75,73 71,73 L37,73 Q33,73 33,69 L33,39 Q33,35 37,35 Z"
+        android:pathData="M30,26 L78,26 Q82,26 82,30 L82,78 Q82,82 78,82 L30,82 Q26,82 26,78 L26,30 Q26,26 30,26 Z"
+        android:fillColor="#FFFFFF"/>
+
+    <!-- ═══ WATCH SCREEN (dark fill — so ECG contrasts) ═══ -->
+    <path
+        android:pathData="M33,33 L75,33 Q79,33 79,37 L79,71 Q79,75 75,75 L33,75 Q29,75 29,71 L29,37 Q29,33 33,33 Z"
+        android:fillColor="#0A1628"/>
+
+    <!-- ═══ WATCH BAND BOTTOM ═══ -->
+    <path
+        android:pathData="M40.5,82 L67.5,82 L67.5,94 Q67.5,95.5 66,95.5 L42,95.5 Q40.5,95.5 40.5,94 Z"
         android:fillColor="#FFFFFF"
-        android:fillAlpha="0.15" />
+        android:fillAlpha="0.92"/>
 
-    <!-- ===== WATCH SCREEN INNER (fully transparent — background shows through) ===== -->
-    <!-- We intentionally leave this transparent so the gradient bg is visible -->
-
-    <!-- ===== WATCH BAND TOP ===== -->
+    <!-- ═══ SIDE CROWN BUTTON ═══ -->
     <path
-        android:pathData="M42,18 L66,18 Q67,18 67,19 L67,26 L41,26 L41,19 Q41,18 42,18 Z"
+        android:pathData="M82,43 L84.5,43 Q85.5,43 85.5,44 L85.5,52 Q85.5,53 84.5,53 L82,53 Z"
         android:fillColor="#FFFFFF"
-        android:fillAlpha="0.90" />
+        android:fillAlpha="0.75"/>
 
-    <!-- ===== WATCH BAND BOTTOM ===== -->
+    <!-- ═══ ECG PULSE LINE (WHITE, 4dp — very visible on dark screen) ═══ -->
+    <!-- Simple 3-peak pulse — easy to read at small sizes -->
     <path
-        android:pathData="M41,82 L67,82 L67,90 Q67,91 66,91 L42,91 Q41,91 41,90 Z"
-        android:fillColor="#FFFFFF"
-        android:fillAlpha="0.90" />
-
-    <!-- ===== WATCH CROWN (side button) ===== -->
-    <path
-        android:pathData="M78,44 L80,44 Q81,44 81,45 L81,51 Q81,52 80,52 L78,52 Z"
-        android:fillColor="#FFFFFF"
-        android:fillAlpha="0.70" />
-
-    <!-- ===== ECG / PULSE LINE (white, thick — always visible) ===== -->
-    <path
-        android:pathData="M33,54 L40,54 L44,42 L48,66 L52,54 L56,48 L60,60 L64,54 L75,54"
+        android:pathData="M29,54 L37,54 L41,42 L46,66 L51,54 L79,54"
         android:strokeColor="#FFFFFF"
-        android:strokeWidth="3.0"
+        android:strokeWidth="4"
         android:strokeLineCap="round"
         android:strokeLineJoin="round"
-        android:fillColor="@android:color/transparent" />
+        android:fillColor="@android:color/transparent"/>
 
-    <!-- ===== Rx SYMBOL (white, bold — clearly visible) ===== -->
-    <!-- R letter -->
+    <!-- ═══ Rx SYMBOL (white, large, bold) ═══ -->
+    <!-- R — thick stroke paths -->
     <path
-        android:pathData="M40,65 L40,74 M40,65 L45,65 Q48,65 48,68 Q48,71 45,71 L40,71 M45,71 L48,74"
+        android:pathData="M34,62 L34,74"
         android:strokeColor="#FFFFFF"
-        android:strokeWidth="2.2"
+        android:strokeWidth="3"
+        android:strokeLineCap="round"
+        android:fillColor="@android:color/transparent"/>
+    <path
+        android:pathData="M34,62 L40,62 Q44,62 44,65.5 Q44,69 40,69 L34,69"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="3"
         android:strokeLineCap="round"
         android:strokeLineJoin="round"
-        android:fillColor="@android:color/transparent" />
-
-    <!-- x letter -->
+        android:fillColor="@android:color/transparent"/>
     <path
-        android:pathData="M52,66 L57,74 M57,66 L52,74"
+        android:pathData="M40,69 L44,74"
         android:strokeColor="#FFFFFF"
-        android:strokeWidth="2.2"
+        android:strokeWidth="3"
         android:strokeLineCap="round"
-        android:fillColor="@android:color/transparent" />
+        android:fillColor="@android:color/transparent"/>
 
-    <!-- ===== SPARKLE DOTS (white glow) ===== -->
-    <!-- Top-left sparkle -->
+    <!-- x — bold X -->
     <path
-        android:pathData="M32,28 a1.2,1.2 0 1,0 2.4,0 a1.2,1.2 0 1,0 -2.4,0"
-        android:fillColor="#FFFFFF"
-        android:fillAlpha="0.5" />
+        android:pathData="M49,63 L56,74"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="3"
+        android:strokeLineCap="round"
+        android:fillColor="@android:color/transparent"/>
+    <path
+        android:pathData="M56,63 L49,74"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="3"
+        android:strokeLineCap="round"
+        android:fillColor="@android:color/transparent"/>
 
-    <!-- Top-right sparkle -->
+    <!-- Subscript slash under x (medical Rx convention) -->
     <path
-        android:pathData="M74,29 a1.0,1.0 0 1,0 2.0,0 a1.0,1.0 0 1,0 -2.0,0"
-        android:fillColor="#FFFFFF"
-        android:fillAlpha="0.4" />
+        android:pathData="M54,71 L58,74"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:fillColor="@android:color/transparent"/>
 
-    <!-- Bottom-right sparkle -->
-    <path
-        android:pathData="M73,79 a1.1,1.1 0 1,0 2.2,0 a1.1,1.1 0 1,0 -2.2,0"
-        android:fillColor="#FFFFFF"
-        android:fillAlpha="0.35" />
+    <!-- ═══ SUBTLE GLOW DOTS (sparkle — small, white) ═══ -->
+    <path android:pathData="M25,28 a1.5,1.5 0 1,0 3,0 a1.5,1.5 0 1,0 -3,0"
+        android:fillColor="#FFFFFF" android:fillAlpha="0.45"/>
+    <path android:pathData="M81,27 a1.2,1.2 0 1,0 2.4,0 a1.2,1.2 0 1,0 -2.4,0"
+        android:fillColor="#FFFFFF" android:fillAlpha="0.35"/>
+    <path android:pathData="M80,81 a1.3,1.3 0 1,0 2.6,0 a1.3,1.3 0 1,0 -2.6,0"
+        android:fillColor="#FFFFFF" android:fillAlpha="0.30"/>
 
 </vector>

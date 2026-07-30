@@ -1,11 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-    MONOCHROME layer for Wrist Rx — Android 13+ Themed Icons
-    System auto-tints this with wallpaper extracted color.
-    Design must be a clear silhouette — no color fills, just shape.
+    MONOCHROME — Android 13+ Themed Icon
+    System tints ALL white elements with wallpaper accent color.
+    Black elements = dark shadow/background.
 
-    Key: ECG line uses STROKE on transparent screen,
-    so it's always clearly visible when system applies tint.
+    Design rule for monochrome:
+    - White = visible (tinted by system to accent color)
+    - Black = dark background area (creates depth/contrast)
+    - The ECG MUST be white stroke on black screen to stay visible after tinting
 -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
@@ -13,56 +15,71 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
 
-    <!-- Watch Body (solid white silhouette) -->
+    <!-- Watch Band Top (white) -->
     <path
-        android:pathData="M36,26 L72,26 Q78,26 78,32 L78,76 Q78,82 72,82 L36,82 Q30,82 30,76 L30,32 Q30,26 36,26 Z"
-        android:fillColor="@android:color/white" />
+        android:pathData="M42,14 L66,14 L67.5,26 L40.5,26 Z"
+        android:fillColor="#FFFFFF"/>
 
-    <!-- Watch Screen (cutout — black so ECG white line is visible) -->
+    <!-- Watch Body (white outer shell) -->
     <path
-        android:pathData="M37,35 L71,35 Q75,35 75,39 L75,69 Q75,73 71,73 L37,73 Q33,73 33,69 L33,39 Q33,35 37,35 Z"
-        android:fillColor="@android:color/black" />
+        android:pathData="M30,26 L78,26 Q82,26 82,30 L82,78 Q82,82 78,82 L30,82 Q26,82 26,78 L26,30 Q26,26 30,26 Z"
+        android:fillColor="#FFFFFF"/>
 
-    <!-- Watch Band Top -->
+    <!-- Watch Screen (BLACK fill — creates contrast with white ECG stroke) -->
     <path
-        android:pathData="M42,18 L66,18 L67,26 L41,26 Z"
-        android:fillColor="@android:color/white" />
+        android:pathData="M33,33 L75,33 Q79,33 79,37 L79,71 Q79,75 75,75 L33,75 Q29,75 29,71 L29,37 Q29,33 33,33 Z"
+        android:fillColor="#000000"/>
 
-    <!-- Watch Band Bottom -->
+    <!-- Watch Band Bottom (white) -->
     <path
-        android:pathData="M41,82 L67,82 L66,91 L42,91 Z"
-        android:fillColor="@android:color/white" />
+        android:pathData="M40.5,82 L67.5,82 L66,95.5 L42,95.5 Z"
+        android:fillColor="#FFFFFF"/>
 
-    <!-- Watch Crown -->
+    <!-- Side Crown (white) -->
     <path
-        android:pathData="M78,44 L81,44 L81,52 L78,52 Z"
-        android:fillColor="@android:color/white" />
+        android:pathData="M82,43 L85.5,43 L85.5,53 L82,53 Z"
+        android:fillColor="#FFFFFF"/>
 
-    <!-- ECG Pulse Line (white on black screen — clearly visible) -->
+    <!--
+        ECG LINE — WHITE stroke on BLACK screen
+        When system tints: white → accent color (still visible on black bg)
+        4dp thick — clearly visible even at small sizes
+    -->
     <path
-        android:pathData="M33,54 L40,54 L44,42 L48,66 L52,54 L56,48 L60,60 L64,54 L75,54"
-        android:strokeColor="@android:color/white"
-        android:strokeWidth="3.0"
+        android:pathData="M29,54 L37,54 L41,42 L46,66 L51,54 L79,54"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="4"
         android:strokeLineCap="round"
         android:strokeLineJoin="round"
-        android:fillColor="@android:color/transparent" />
+        android:fillColor="@android:color/transparent"/>
 
-    <!-- Rx Symbol (white, bold) -->
-    <!-- R letter -->
+    <!-- Rx — R letter (white stroke on black screen) -->
     <path
-        android:pathData="M40,65 L40,74 M40,65 L45,65 Q48,65 48,68 Q48,71 45,71 L40,71 M45,71 L48,74"
-        android:strokeColor="@android:color/white"
-        android:strokeWidth="2.5"
+        android:pathData="M34,62 L34,74"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="3.5"
+        android:strokeLineCap="round"
+        android:fillColor="@android:color/transparent"/>
+    <path
+        android:pathData="M34,62 L40,62 Q44,62 44,65.5 Q44,69 40,69 L34,69"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="3.5"
         android:strokeLineCap="round"
         android:strokeLineJoin="round"
-        android:fillColor="@android:color/transparent" />
-
-    <!-- x letter -->
+        android:fillColor="@android:color/transparent"/>
     <path
-        android:pathData="M52,66 L57,74 M57,66 L52,74"
-        android:strokeColor="@android:color/white"
-        android:strokeWidth="2.5"
+        android:pathData="M40,69 L44,74"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="3.5"
         android:strokeLineCap="round"
-        android:fillColor="@android:color/transparent" />
+        android:fillColor="@android:color/transparent"/>
+
+    <!-- Rx — x letter -->
+    <path
+        android:pathData="M49,63 L56,74 M56,63 L49,74"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="3.5"
+        android:strokeLineCap="round"
+        android:fillColor="@android:color/transparent"/>
 
 </vector>
