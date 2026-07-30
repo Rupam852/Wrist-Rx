@@ -306,8 +306,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
               ref.read(watchConnectedProvider.notifier).state = false;
               ref.read(healthProvider.notifier).reset();
               if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('🔌 Smartwatch disconnected.')),
+                TopToast.show(
+                  context,
+                  title: 'Watch Disconnected',
+                  message: 'Smartwatch disconnected successfully.',
+                  type: TopToastType.info,
                 );
               }
             },

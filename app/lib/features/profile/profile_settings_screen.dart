@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:go_router/go_router.dart';
 import 'dart:io';
 import '../../core/theme/app_colors.dart';
+import '../../core/services/top_toast_service.dart';
 import '../auth/auth_provider.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -38,11 +39,23 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
       await ref2.putFile(File(img.path));
       final url = await ref2.getDownloadURL();
       await ref.read(userModelProvider.notifier).updateProfile(photoUrl: url);
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('✅ Profile photo updated!')));
+      if (mounted) {
+        TopToast.show(
+          context,
+          title: 'Photo Updated',
+          message: 'Profile photo updated successfully!',
+          type: TopToastType.success,
+        );
+      }
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to upload: $e')));
+      if (mounted) {
+        TopToast.show(
+          context,
+          title: 'Upload Failed',
+          message: 'Failed to upload photo: $e',
+          type: TopToastType.error,
+        );
+      }
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
@@ -54,8 +67,14 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
     setState(() => _isSaving = true);
     await ref.read(userModelProvider.notifier).updateProfile(name: name);
     setState(() => _isSaving = false);
-    if (mounted) ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('✅ Name updated!')));
+    if (mounted) {
+      TopToast.show(
+        context,
+        title: 'Name Updated',
+        message: 'Profile name updated successfully!',
+        type: TopToastType.success,
+      );
+    }
   }
 
   @override

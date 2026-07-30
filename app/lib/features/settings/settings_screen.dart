@@ -6,6 +6,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/services/storage_service.dart';
 import '../../core/services/api_service.dart';
+import '../../core/services/top_toast_service.dart';
 import '../../core/constants/api_constants.dart';
 import '../../shared/models/models.dart';
 import '../auth/auth_provider.dart';
@@ -65,8 +66,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       await ref.read(userModelProvider.notifier).updateSettings(newSettings);
     }
     setState(() => _isSavingKey = false);
-    if (mounted) ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('✅ API Key saved securely!')));
+    if (mounted) {
+      TopToast.show(
+        context,
+        title: 'API Key Saved!',
+        message: 'Gemini API Key and model settings saved securely.',
+        type: TopToastType.success,
+      );
+    }
   }
 
   Future<void> _updateToggle(String key, bool value) async {
@@ -124,17 +131,20 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ref.read(healthProvider.notifier).reset();
                 ref.read(aiMessagesProvider.notifier).clear();
                 if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('✨ All health data & AI chat history wiped!'),
-                      backgroundColor: Colors.green,
-                    ),
+                  TopToast.show(
+                    context,
+                    title: 'Data Cleaned!',
+                    message: 'All health data & AI chat history wiped successfully.',
+                    type: TopToastType.success,
                   );
                 }
               } catch (e) {
                 if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Error cleaning data: $e'), backgroundColor: Colors.red),
+                  TopToast.show(
+                    context,
+                    title: 'Clean Failed',
+                    message: 'Error cleaning data: $e',
+                    type: TopToastType.error,
                   );
                 }
               } finally {
@@ -328,7 +338,23 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     subtitle: Text(e.value.phone, style: TextStyle(color: AppColors.onSurfaceDark)),
                     trailing: IconButton(
                       icon: const Icon(Icons.delete_outline_rounded, color: Colors.red),
-                      onPressed: () {},
+                      onPressed: () async {
+                        final currentContacts = List<EmergencyContact>.from(user?.settings.emergencyContacts ?? []);
+                        if (e.key < currentContacts.length) {
+                          final removedName = currentContacts[e.key].name;
+                          currentContacts.removeAt(e.key);
+                          await ref.read(userModelProvider.notifier).updateSettings(
+                            user!.settings.copyWith(emergencyContacts: currentContacts));
+                          if (context.mounted) {
+                            TopToast.show(
+                              context,
+                              title: 'Contact Removed',
+                              message: '$removedName removed from emergency contacts.',
+                              type: TopToastType.info,
+                            );
+                          }
+                        }
+                      },
                     ),
                   ),
                 ),
@@ -442,13 +468,34 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
           FilledButton(
             onPressed: () async {
+              final name = nameCtrl.text.trim();
+              final phone = phoneCtrl.text.trim();
+              if (name.isEmpty || phone.isEmpty) {
+                TopToast.show(
+                  context,
+                  title: 'Validation Error',
+                  message: 'Please enter both name and phone number.',
+                  type: TopToastType.error,
+                );
+                return;
+              }
               final user = ref.read(userModelProvider);
               if (user == null) return;
-              final contacts = [...user.settings.emergencyContacts,
-                EmergencyContact(name: nameCtrl.text, phone: phoneCtrl.text)];
+              final contacts = [
+                ...user.settings.emergencyContacts,
+                EmergencyContact(name: name, phone: phone)
+              ];
               await ref.read(userModelProvider.notifier).updateSettings(
                 user.settings.copyWith(emergencyContacts: contacts));
-              if (mounted) Navigator.pop(context);
+              if (mounted) {
+                Navigator.pop(context);
+                TopToast.show(
+                  context,
+                  title: 'Contact Saved!',
+                  message: 'Emergency contact "$name" added successfully.',
+                  type: TopToastType.success,
+                );
+              }
             },
             child: const Text('Add'),
           ),
