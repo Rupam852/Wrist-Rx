@@ -9,6 +9,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/services/api_service.dart';
+import '../../core/services/top_toast_service.dart';
 import '../../core/constants/api_constants.dart';
 import '../watch/watch_connect_sheet.dart';
 import '../watch/watch_provider.dart';
@@ -100,6 +101,23 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
     final isBpSupported = ref.watch(bpSupportedProvider);
     final isStepsSupported = ref.watch(stepsSupportedProvider);
     final user = ref.watch(userModelProvider);
+
+    // Listen for out-of-range watch disconnections to trigger top toast + alert dialog
+    ref.listen<String?>(watchOutOfRangeProvider, (previous, deviceName) {
+      if (deviceName != null) {
+        TopToast.show(
+          context,
+          title: 'Watch Out of Range',
+          message: '$deviceName disconnected because it moved out of range.',
+          type: TopToastType.warning,
+          duration: const Duration(seconds: 5),
+        );
+
+        _showOutOfRangeDisconnectDialog(context, deviceName);
+
+        Future.microtask(() => ref.read(watchOutOfRangeProvider.notifier).state = null);
+      }
+    });
 
     // Displays stored calculated data immediately, and updates live when watch calculates new data
     final hasHr = health.heartRate > 0;
@@ -291,6 +309,61 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
               }
             },
             child: const Text('Disconnect'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showOutOfRangeDisconnectDialog(BuildContext context, String deviceName) {
+    showDialog(
+      context: context,
+      builder: (dlgCtx) => AlertDialog(
+        backgroundColor: AppColors.cardDark,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Icon(Icons.bluetooth_searching_rounded, color: Colors.amber, size: 28),
+            SizedBox(width: 10),
+            Text('Device Out of Range', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700)),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Your smartwatch "$deviceName" was disconnected because it went out of Bluetooth range.',
+              style: const TextStyle(color: Colors.white70, fontSize: 13, height: 1.4),
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'Please bring your watch closer to your phone and tap Reconnect Device below.',
+              style: TextStyle(color: AppColors.primary, fontSize: 12, fontWeight: FontWeight.w600),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dlgCtx).pop(),
+            child: const Text('Dismiss', style: TextStyle(color: Colors.white54, fontWeight: FontWeight.w600)),
+          ),
+          FilledButton.icon(
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            onPressed: () {
+              Navigator.of(dlgCtx).pop();
+              showModalBottomSheet(
+                context: context,
+                isScrollControlled: true,
+                backgroundColor: Colors.transparent,
+                builder: (_) => const WatchConnectSheet(),
+              );
+            },
+            icon: const Icon(Icons.refresh_rounded, size: 18),
+            label: const Text('Reconnect Device', style: TextStyle(fontWeight: FontWeight.w700)),
           ),
         ],
       ),

@@ -3,6 +3,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/services/top_toast_service.dart';
 import '../home/health_provider.dart';
 import 'watch_provider.dart';
 
@@ -31,6 +32,17 @@ class _WatchConnectSheetState extends ConsumerState<WatchConnectSheet>
   }
 
   Future<void> _startBleScan() async {
+    // Check if Bluetooth is turned ON before scanning
+    try {
+      final state = await FlutterBluePlus.adapterState.first;
+      if (state != BluetoothAdapterState.on) {
+        if (mounted) {
+          _showBluetoothOffDialog(context);
+        }
+        return;
+      }
+    } catch (_) {}
+
     setState(() {
       _isScanning = true;
       _scanResults.clear();
@@ -51,28 +63,78 @@ class _WatchConnectSheetState extends ConsumerState<WatchConnectSheet>
     if (mounted) setState(() => _isScanning = false);
   }
 
+  void _showBluetoothOffDialog(BuildContext context) {
+    TopToast.show(
+      context,
+      title: 'Bluetooth is OFF',
+      message: 'Please enable Bluetooth to connect your watch.',
+      type: TopToastType.warning,
+    );
+
+    showDialog(
+      context: context,
+      builder: (dlgCtx) => AlertDialog(
+        backgroundColor: AppColors.cardDark,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Icon(Icons.bluetooth_disabled_rounded, color: Colors.amber, size: 28),
+            SizedBox(width: 10),
+            Text('Bluetooth Required', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700)),
+          ],
+        ),
+        content: const Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Bluetooth is turned off. Turn ON Bluetooth to search and connect your smartwatch.',
+              style: TextStyle(color: Colors.white70, fontSize: 13, height: 1.4),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dlgCtx).pop(),
+            child: const Text('Cancel', style: TextStyle(color: Colors.white54)),
+          ),
+          FilledButton.icon(
+            style: FilledButton.styleFrom(backgroundColor: AppColors.primary),
+            onPressed: () async {
+              Navigator.of(dlgCtx).pop();
+              try {
+                await FlutterBluePlus.turnOn();
+              } catch (_) {}
+            },
+            icon: const Icon(Icons.bluetooth_rounded, size: 18),
+            label: const Text('Turn ON Bluetooth', style: TextStyle(fontWeight: FontWeight.w700)),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _connectBluetoothDevice(BluetoothDevice device) async {
     setState(() => _connectingDeviceId = device.remoteId.str);
     try {
       await ref.read(watchProvider.notifier).connectViaBluetooth(device);
       ref.read(watchConnectedProvider.notifier).state = true;
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(children: [
-              const Icon(Icons.bluetooth_connected_rounded, color: Colors.white),
-              const SizedBox(width: 10),
-              Text('Connected to ${device.platformName}!'),
-            ]),
-            backgroundColor: AppColors.primary,
-          ),
+        TopToast.show(
+          context,
+          title: 'Watch Connected!',
+          message: 'Connected to ${device.platformName}',
+          type: TopToastType.success,
         );
         Navigator.pop(context);
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to connect: $e'), backgroundColor: Colors.red),
+        TopToast.show(
+          context,
+          title: 'Connection Failed',
+          message: e.toString(),
+          type: TopToastType.error,
         );
       }
     } finally {

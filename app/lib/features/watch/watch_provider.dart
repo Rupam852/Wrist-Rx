@@ -12,6 +12,8 @@ final watchProvider = StateNotifierProvider<WatchNotifier, WatchState>((ref) {
   return WatchNotifier(ref);
 });
 
+final watchOutOfRangeProvider = StateProvider<String?>((ref) => null);
+
 enum WatchConnectionStatus { disconnected, scanning, connecting, connected }
 
 class WatchState {
@@ -29,6 +31,7 @@ class WatchNotifier extends StateNotifier<WatchState> {
 
   final _api = ApiService();
   BluetoothDevice? _connectedDevice;
+  bool _isManualDisconnect = false;
   final List<StreamSubscription> _bleSubscriptions = [];
   final List<BluetoothCharacteristic> _writeCharacteristics = [];
   final List<BluetoothCharacteristic> _readableCharacteristics = [];
@@ -39,9 +42,18 @@ class WatchNotifier extends StateNotifier<WatchState> {
     state = state.copyWith(status: WatchConnectionStatus.connecting, deviceName: device.platformName);
     try {
       await device.connect(timeout: const Duration(seconds: 10));
+      _isManualDisconnect = false;
       _connectedDevice = device;
       _writeCharacteristics.clear();
       _readableCharacteristics.clear();
+
+      // Monitor live connection state for unexpected out-of-range disconnections
+      final connSub = device.connectionState.listen((connState) {
+        if (connState == BluetoothConnectionState.disconnected && !_isManualDisconnect) {
+          _handleOutOfRangeDisconnect(device.platformName.isNotEmpty ? device.platformName : 'Smartwatch');
+        }
+      });
+      _bleSubscriptions.add(connSub);
 
       final uid = FirebaseAuth.instance.currentUser?.uid;
       if (uid != null) {
@@ -360,7 +372,27 @@ class WatchNotifier extends StateNotifier<WatchState> {
     }
   }
 
+  void _handleOutOfRangeDisconnect(String deviceName) {
+    _watchPingTimer?.cancel();
+    for (final sub in _bleSubscriptions) {
+      try { sub.cancel(); } catch (_) {}
+    }
+    _bleSubscriptions.clear();
+    _writeCharacteristics.clear();
+    _readableCharacteristics.clear();
+
+    _connectedDevice = null;
+    ref.read(watchConnectedProvider.notifier).state = false;
+    state = WatchState(status: WatchConnectionStatus.disconnected, error: 'Out of range');
+
+    WatchForegroundService().stop().catchError((_) => null);
+
+    // Notify UI about out-of-range disconnect
+    ref.read(watchOutOfRangeProvider.notifier).state = deviceName;
+  }
+
   Future<void> disconnect() async {
+    _isManualDisconnect = true;
     _watchPingTimer?.cancel();
     for (final sub in _bleSubscriptions) {
       try { await sub.cancel(); } catch (_) {}
