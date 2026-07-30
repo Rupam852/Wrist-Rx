@@ -559,10 +559,13 @@ class _SosButton extends ConsumerWidget {
   }
 
   Future<void> _triggerSos(BuildContext context, WidgetRef ref) async {
-    // 1. Heavy Haptic Vibration
+    // 1. Heavy Haptic Vibration (only if haptic setting is enabled)
     try {
-      await HapticFeedback.heavyImpact();
-      await HapticFeedback.vibrate();
+      final user = ref.read(userModelProvider);
+      if (user?.settings.haptic ?? true) {
+        await HapticFeedback.heavyImpact();
+        await HapticFeedback.vibrate();
+      }
     } catch (_) {}
 
     // 2. Fetch live GPS location

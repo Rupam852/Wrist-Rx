@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../core/theme/app_colors.dart';
@@ -72,14 +73,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     if (user == null) return;
     UserSettings newSettings;
     switch (key) {
-      case 'notifications':
-        newSettings = user.settings.copyWith(notifications: value);
-        break;
-      case 'sound':
-        newSettings = user.settings.copyWith(sound: value);
-        break;
       case 'haptic':
         newSettings = user.settings.copyWith(haptic: value);
+        // Apply haptic immediately when toggled on
+        if (value) {
+          HapticFeedback.mediumImpact();
+        }
         break;
       case 'syncCloud':
         newSettings = user.settings.copyWith(syncCloud: value);
@@ -164,22 +163,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           // ── App Preferences ────────────────────────────
           _SectionHeader('⚙ App Preferences'),
           _SettingsTile(
-            title: 'Push Notifications',
-            subtitle: 'Get real-time health alerts & watch sync updates',
-            value: settings.notifications,
-            onChanged: (v) => _updateToggle('notifications', v),
-          ),
-          _SettingsTile(
             title: 'Haptic Feedback',
-            subtitle: 'Vibrate watch & phone on SOS & key alerts',
+            subtitle: 'Vibrate phone on SOS & key health alerts',
             value: settings.haptic,
             onChanged: (v) => _updateToggle('haptic', v),
-          ),
-          _SettingsTile(
-            title: 'Sound Alerts',
-            subtitle: 'Play audio chimes during high priority events',
-            value: settings.sound,
-            onChanged: (v) => _updateToggle('sound', v),
           ),
           _SettingsTile(
             title: 'Sync Data on Cloud',
