@@ -83,12 +83,14 @@ class UserSettings {
   final bool syncCloud;
   final String aiProvider;
   final String aiModel;
+  final String sosMethod; // 'auto_sms' | 'whatsapp' | 'manual_sms'
   final List<EmergencyContact> emergencyContacts;
 
   UserSettings({
     this.notifications = true, this.sound = false, this.haptic = false,
     this.syncCloud = false,
     this.aiProvider = 'gemini', this.aiModel = 'gemini-2.0-flash',
+    this.sosMethod = 'auto_sms',
     this.emergencyContacts = const [],
   });
 
@@ -99,6 +101,7 @@ class UserSettings {
     syncCloud: json['syncCloud'] ?? false,
     aiProvider: json['aiProvider'] ?? 'gemini',
     aiModel: json['aiModel'] ?? 'gemini-2.0-flash',
+    sosMethod: json['sosMethod'] ?? 'auto_sms',
     emergencyContacts: (json['emergencyContacts'] as List? ?? [])
         .map((e) => EmergencyContact.fromJson(e)).toList(),
   );
@@ -107,12 +110,14 @@ class UserSettings {
     'notifications': notifications, 'sound': sound, 'haptic': haptic,
     'syncCloud': syncCloud,
     'aiProvider': aiProvider, 'aiModel': aiModel,
+    'sosMethod': sosMethod,
     'emergencyContacts': emergencyContacts.map((e) => e.toJson()).toList(),
   };
 
   UserSettings copyWith({
     bool? notifications, bool? sound, bool? haptic, bool? syncCloud,
-    String? aiProvider, String? aiModel, List<EmergencyContact>? emergencyContacts,
+    String? aiProvider, String? aiModel, String? sosMethod,
+    List<EmergencyContact>? emergencyContacts,
   }) => UserSettings(
     notifications: notifications ?? this.notifications,
     sound: sound ?? this.sound,
@@ -120,9 +125,11 @@ class UserSettings {
     syncCloud: syncCloud ?? this.syncCloud,
     aiProvider: aiProvider ?? this.aiProvider,
     aiModel: aiModel ?? this.aiModel,
+    sosMethod: sosMethod ?? this.sosMethod,
     emergencyContacts: emergencyContacts ?? this.emergencyContacts,
   );
 }
+
 
 class EmergencyContact {
   final String name;

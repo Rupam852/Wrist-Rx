@@ -3,16 +3,18 @@ import '../../core/services/api_service.dart';
 import '../../core/constants/api_constants.dart';
 import '../../core/services/storage_service.dart';
 import '../../shared/models/models.dart';
+import '../home/health_provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 final aiMessagesProvider = StateNotifierProvider<AiMessagesNotifier, List<ChatMessage>>((ref) {
-  return AiMessagesNotifier();
+  return AiMessagesNotifier(ref);
 });
 
 final aiLoadingProvider = StateProvider<bool>((ref) => false);
 
 class AiMessagesNotifier extends StateNotifier<List<ChatMessage>> {
-  AiMessagesNotifier() : super([]);
+  final Ref _ref;
+  AiMessagesNotifier(this._ref) : super([]);
 
   final _api = ApiService();
 
@@ -41,11 +43,21 @@ class AiMessagesNotifier extends StateNotifier<List<ChatMessage>> {
     state = [...state, ChatMessage(role: 'user', content: message)];
 
     try {
+      final health = _ref.read(healthProvider);
       final result = await _api.post(ApiConstants.aiChat, {
         'message': message,
         'apiKey': apiKey,
         'model': aiModel,
+        'healthData': {
+          'heartRate': health.heartRate,
+          'systolic': health.systolic,
+          'diastolic': health.diastolic,
+          'steps': health.steps,
+          'lat': health.lat,
+          'lng': health.lng,
+        },
       });
+
       if (result['success'] == true && result['response'] != null) {
         state = [...state, ChatMessage(role: 'ai', content: result['response'] as String)];
       } else {

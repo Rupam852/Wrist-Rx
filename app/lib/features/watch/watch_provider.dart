@@ -6,23 +6,51 @@ import '../../core/services/api_service.dart';
 import '../../core/services/foreground_service.dart';
 import '../../core/constants/api_constants.dart';
 import '../home/health_provider.dart';
+import '../auth/auth_provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+
 
 final watchProvider = StateNotifierProvider<WatchNotifier, WatchState>((ref) {
   return WatchNotifier(ref);
 });
 
 final watchOutOfRangeProvider = StateProvider<String?>((ref) => null);
+final watchBatteryProvider = StateProvider<int>((ref) => 85);
+final watchIsChargingProvider = StateProvider<bool>((ref) => false);
 
 enum WatchConnectionStatus { disconnected, scanning, connecting, connected }
+
+enum HardwareProtocol { standardGatt, vendorFitPro, vendorDaFit, vendorGeneric }
 
 class WatchState {
   final WatchConnectionStatus status;
   final String? deviceName;
+  final String? manufacturer;
+  final HardwareProtocol protocol;
   final String? error;
-  WatchState({this.status = WatchConnectionStatus.disconnected, this.deviceName, this.error});
-  WatchState copyWith({WatchConnectionStatus? status, String? deviceName, String? error}) =>
-      WatchState(status: status ?? this.status, deviceName: deviceName ?? this.deviceName, error: error ?? this.error);
+
+  WatchState({
+    this.status = WatchConnectionStatus.disconnected,
+    this.deviceName,
+    this.manufacturer,
+    this.protocol = HardwareProtocol.vendorGeneric,
+    this.error,
+  });
+
+  WatchState copyWith({
+    WatchConnectionStatus? status,
+    String? deviceName,
+    String? manufacturer,
+    HardwareProtocol? protocol,
+    String? error,
+  }) =>
+      WatchState(
+        status: status ?? this.status,
+        deviceName: deviceName ?? this.deviceName,
+        manufacturer: manufacturer ?? this.manufacturer,
+        protocol: protocol ?? this.protocol,
+        error: error ?? this.error,
+      );
 }
 
 class WatchNotifier extends StateNotifier<WatchState> {
@@ -65,64 +93,25 @@ class WatchNotifier extends StateNotifier<WatchState> {
       // Sync pre-existing app step baseline before receiving live watch telemetry
       ref.read(healthProvider.notifier).syncWatchBaseline();
 
-      // Open all hardware metric capabilities by default
-      ref.read(hrSupportedProvider.notifier).state = true;
-      ref.read(bpSupportedProvider.notifier).state = true;
-      ref.read(stepsSupportedProvider.notifier).state = true;
-
-
-      // Discover BLE services & subscribe to ALL notify/indicate characteristics continuously
+      // Discover BLE services & run Hardware Capabilities Handshake
       try {
         final services = await device.discoverServices();
-        for (final service in services) {
-          for (final characteristic in service.characteristics) {
-            // Collect ALL writable characteristics for parallel command probes
-            if (characteristic.properties.write || characteristic.properties.writeWithoutResponse) {
-              _writeCharacteristics.add(characteristic);
-            }
-
-            // Collect readable characteristics for periodic polling & read initial values immediately
-            if (characteristic.properties.read) {
-              _readableCharacteristics.add(characteristic);
-              try {
-                final initialBytes = await characteristic.read();
-                if (initialBytes.isNotEmpty) {
-                  _parseBleBytes(initialBytes, characteristic.uuid.toString());
-                }
-              } catch (_) {}
-            }
-
-            // Enable Notifications / Indications - attach lastValueStream BEFORE setNotifyValue so initial notification is captured
-            if (characteristic.properties.notify || characteristic.properties.indicate) {
-              try {
-                final sub = characteristic.lastValueStream.listen(
-                  (value) {
-                    if (value.isNotEmpty) {
-                      _parseBleBytes(value, characteristic.uuid.toString());
-                    }
-                  },
-                  onError: (_) {},
-                  cancelOnError: false,
-                );
-                _bleSubscriptions.add(sub);
-                await characteristic.setNotifyValue(true);
-              } catch (_) {}
-            }
-          }
-        }
+        await _performHardwareHandshake(device, services);
       } catch (_) {}
 
-      // Send initial sync commands immediately in burst to pull latest steps, HR, and SpO2 from watch memory
+      // Send initial sync commands immediately in burst
       _triggerWatchSync();
       Future.delayed(const Duration(milliseconds: 500), () => _triggerWatchSync());
       Future.delayed(const Duration(milliseconds: 1500), () => _triggerWatchSync());
 
-      // Start non-stopping 3-second rotating probe sync - avoids flooding the watch
+      // Start adaptive probe sync (only for vendor protocols that need pinging)
       _watchPingTimer?.cancel();
       _pingCycle = 0;
-      _watchPingTimer = Timer.periodic(const Duration(seconds: 3), (_) {
-        _triggerWatchSync();
-      });
+      if (state.protocol != HardwareProtocol.standardGatt) {
+        _watchPingTimer = Timer.periodic(const Duration(seconds: 3), (_) {
+          _triggerWatchSync();
+        });
+      }
 
       state = state.copyWith(status: WatchConnectionStatus.connected);
       ref.read(watchConnectedProvider.notifier).state = true;
@@ -134,6 +123,105 @@ class WatchNotifier extends StateNotifier<WatchState> {
       state = state.copyWith(status: WatchConnectionStatus.disconnected, error: e.toString());
     }
   }
+
+  /// 🤝 Hardware Handshake & Capabilities Matrix Analyzer
+  Future<void> _performHardwareHandshake(BluetoothDevice device, List<BluetoothService> services) async {
+    bool hasHrGatt = false;
+    bool hasBpGatt = false;
+    bool hasStepsGatt = false;
+    bool isStandardGatt = false;
+    String manufacturer = 'Generic Smartwatch';
+
+    for (final service in services) {
+      final sUuid = service.uuid.toString().toLowerCase();
+
+      // DIS (Device Information Service 0x180A)
+      if (sUuid.contains('180a')) {
+        isStandardGatt = true;
+        for (final char in service.characteristics) {
+          final cUuid = char.uuid.toString().toLowerCase();
+          if (cUuid.contains('2a29') && char.properties.read) {
+            try {
+              final bytes = await char.read();
+              if (bytes.isNotEmpty) {
+                manufacturer = String.fromCharCodes(bytes).trim();
+              }
+            } catch (_) {}
+          }
+        }
+      }
+
+      // Heart Rate Service (0x180D)
+      if (sUuid.contains('180d')) {
+        hasHrGatt = true;
+        isStandardGatt = true;
+      }
+
+      // Blood Pressure Service (0x1810)
+      if (sUuid.contains('1810')) {
+        hasBpGatt = true;
+        isStandardGatt = true;
+      }
+
+      // Pedometer Service (0x1814)
+      if (sUuid.contains('1814')) {
+        hasStepsGatt = true;
+        isStandardGatt = true;
+      }
+
+      for (final characteristic in service.characteristics) {
+        // Collect writable characteristics
+        if (characteristic.properties.write || characteristic.properties.writeWithoutResponse) {
+          _writeCharacteristics.add(characteristic);
+        }
+
+        // Collect readable characteristics & read initial value
+        if (characteristic.properties.read) {
+          _readableCharacteristics.add(characteristic);
+          try {
+            final initialBytes = await characteristic.read();
+            if (initialBytes.isNotEmpty) {
+              _parseBleBytes(initialBytes, characteristic.uuid.toString());
+            }
+          } catch (_) {}
+        }
+
+        // Enable Notifications / Indications
+        if (characteristic.properties.notify || characteristic.properties.indicate) {
+          try {
+            final sub = characteristic.lastValueStream.listen(
+              (value) {
+                if (value.isNotEmpty) {
+                  _parseBleBytes(value, characteristic.uuid.toString());
+                }
+              },
+              onError: (_) {},
+              cancelOnError: false,
+            );
+            _bleSubscriptions.add(sub);
+            await characteristic.setNotifyValue(true);
+          } catch (_) {}
+        }
+      }
+    }
+
+    // Resolve Hardware Protocol Mode
+    HardwareProtocol resolvedProtocol = HardwareProtocol.vendorGeneric;
+    if (isStandardGatt) {
+      resolvedProtocol = HardwareProtocol.standardGatt;
+    }
+
+    state = state.copyWith(
+      manufacturer: manufacturer,
+      protocol: resolvedProtocol,
+    );
+
+    // Default open hardware capabilities
+    ref.read(hrSupportedProvider.notifier).state = hasHrGatt || true;
+    ref.read(bpSupportedProvider.notifier).state = hasBpGatt || true;
+    ref.read(stepsSupportedProvider.notifier).state = hasStepsGatt || true;
+  }
+
 
   Future<void> _sendBleCommand(BluetoothCharacteristic char, List<int> bytes) async {
     try {
@@ -211,6 +299,16 @@ class WatchNotifier extends StateNotifier<WatchState> {
       final str = utf8.decode(bytes);
       if (str.startsWith('{') && str.endsWith('}')) {
         final Map<String, dynamic> json = jsonDecode(str);
+        if (json.containsKey('battery')) {
+          int batt = (json['battery'] as num).toInt();
+          if (batt >= 0 && batt <= 100) {
+            ref.read(watchBatteryProvider.notifier).state = batt;
+          }
+        }
+        if (json.containsKey('charging') || json.containsKey('isCharging')) {
+          bool charging = json['charging'] == true || json['isCharging'] == true;
+          ref.read(watchIsChargingProvider.notifier).state = charging;
+        }
         _saveAndPush(json);
         return;
       }
@@ -220,7 +318,24 @@ class WatchNotifier extends StateNotifier<WatchState> {
 
     // ── PRIORITY 1: Standard GATT Characteristics by UUID ──────────────────
 
+    // Standard GATT Battery Level & Charging Status (0x2A19 / service 0x180F)
+    if (u.contains('2a19') || u.contains('180f') || u.contains('battery')) {
+      if (bytes.isNotEmpty) {
+        int batt = bytes[0];
+        if (batt >= 0 && batt <= 100) {
+          ref.read(watchBatteryProvider.notifier).state = batt;
+        }
+        if (bytes.length >= 2) {
+          bool isCharging = (bytes[1] & 0x01) != 0 || bytes[1] == 1 || bytes[1] == 0x80;
+          ref.read(watchIsChargingProvider.notifier).state = isCharging;
+        }
+        return;
+      }
+    }
+
+
     // Standard GATT Heart Rate Measurement (0x2A37 / service 0x180D)
+
     if (u.contains('2a37') || u.contains('180d')) {
       if (bytes.length >= 2) {
         int flags = bytes[0];
@@ -362,15 +477,43 @@ class WatchNotifier extends StateNotifier<WatchState> {
   }
 
 
-  /// Merges single metric update into full HealthReading and saves complete reading to backend database
+  /// Merges single metric update into full HealthReading after cleaning noise & corrupt bytes.
   void _saveAndPush(Map<String, dynamic> data) {
-    ref.read(healthProvider.notifier).updateFromWatch(data);
-    final fullState = ref.read(healthProvider);
-    final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid != null) {
-      _api.post(ApiConstants.saveReading, fullState.toJson()).catchError((_) => <String, dynamic>{});
+    final Map<String, dynamic> cleanData = {};
+
+    // 1. Heart Rate Validation (40 - 220 BPM)
+    if (data.containsKey('heartRate')) {
+      final hr = data['heartRate'];
+      if (hr is num && hr >= 40 && hr <= 220) {
+        cleanData['heartRate'] = hr;
+      }
+    }
+
+    // 2. Blood Pressure Validation (Systolic: 70-220, Diastolic: 40-140)
+    if (data.containsKey('systolic') && data.containsKey('diastolic')) {
+      final sys = data['systolic'];
+      final dia = data['diastolic'];
+      if (sys is num && dia is num && sys >= 70 && sys <= 220 && dia >= 40 && dia <= 140) {
+        cleanData['systolic'] = sys;
+        cleanData['diastolic'] = dia;
+      }
+    }
+
+    // 3. Pedometer Steps Validation (0 - 200,000 steps)
+    if (data.containsKey('steps')) {
+      final st = data['steps'];
+      if (st is num && st >= 0 && st <= 200000) {
+        cleanData['steps'] = st.toInt();
+      }
+    }
+
+    if (cleanData.isNotEmpty) {
+      ref.read(healthProvider.notifier).updateFromWatch(cleanData);
     }
   }
+
+
+
 
   void _handleOutOfRangeDisconnect(String deviceName) {
     _watchPingTimer?.cancel();

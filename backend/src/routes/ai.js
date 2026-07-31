@@ -126,7 +126,7 @@ async function callGemini(apiKey, model, messages) {
 router.post('/chat', authMiddleware, async (req, res) => {
   try {
     const uid = req.user.uid;
-    const { message, apiKey, model } = req.body;
+    const { message, apiKey, model, healthData } = req.body;
 
     if (!message) return res.status(400).json({ success: false, message: 'Message is required' });
     if (!apiKey) return res.status(400).json({ success: false, message: 'API key is required' });
@@ -135,6 +135,12 @@ router.post('/chat', authMiddleware, async (req, res) => {
     const user = await User.findById(uid).select('profile settings');
     const todayStr = new Date().toISOString().split('T')[0];
     const healthDoc = await HealthData.findOne({ userId: uid, date: todayStr }).select('dailySummary');
+
+    // Prefer local healthData payload sent directly from app
+    const hr = healthData?.heartRate ?? healthDoc?.dailySummary?.avgHeartRate ?? 0;
+    const sys = healthData?.systolic ?? healthDoc?.dailySummary?.avgSystolic ?? 0;
+    const dia = healthData?.diastolic ?? healthDoc?.dailySummary?.avgDiastolic ?? 0;
+    const steps = healthData?.steps ?? healthDoc?.dailySummary?.totalSteps ?? 0;
 
     // Build system context
     const systemContext = `You are a personal health AI assistant for the Wrist Rx app.
@@ -145,13 +151,13 @@ User profile:
 - Health goals: ${user?.profile?.goals?.join(', ') || 'Not set'}
 - Activity level: ${user?.profile?.activityLevel || 'Unknown'}
 
-Today's health data:
-- Avg Heart Rate: ${healthDoc?.dailySummary?.avgHeartRate || 0} BPM
-- Max Heart Rate: ${healthDoc?.dailySummary?.maxHeartRate || 0} BPM
-- Total Steps: ${healthDoc?.dailySummary?.totalSteps || 0}
-- Avg BP: ${healthDoc?.dailySummary?.avgSystolic || 0}/${healthDoc?.dailySummary?.avgDiastolic || 0} mmHg
+Today's current health data:
+- Heart Rate: ${hr > 0 ? hr + ' BPM' : 'Not recorded'}
+- Blood Pressure: ${sys > 0 && dia > 0 ? `${sys}/${dia} mmHg` : 'Not recorded'}
+- Steps Count: ${steps > 0 ? steps : '0'}
 
-Give concise, personalized health advice. Always recommend consulting a doctor for medical concerns.`;
+Give concise, personalized health advice based on the user's data. Always recommend consulting a doctor for medical concerns.`;
+
 
     // Get conversation history
     let conv = await AiConversation.findOne({ userId: uid });

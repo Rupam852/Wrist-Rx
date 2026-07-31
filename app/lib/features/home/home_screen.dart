@@ -7,14 +7,20 @@ import 'package:go_router/go_router.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:permission_handler/permission_handler.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/services/api_service.dart';
 import '../../core/services/top_toast_service.dart';
+import '../../core/services/storage_service.dart';
 import '../../core/constants/api_constants.dart';
 import '../watch/watch_connect_sheet.dart';
+import '../watch/watch_details_sheet.dart';
 import '../watch/watch_provider.dart';
 import '../auth/auth_provider.dart';
 import 'health_provider.dart';
+
+
+
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -25,6 +31,7 @@ class HomeScreen extends ConsumerStatefulWidget {
 
 class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProviderStateMixin {
   late AnimationController _pulseController;
+  Timer? _gpsTimer;
 
   @override
   void initState() {
@@ -32,6 +39,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
     _pulseController = AnimationController(vsync: this, duration: const Duration(milliseconds: 1000))
       ..repeat(reverse: true);
     _initGpsLocation();
+
+    // Auto refresh GPS location every 2 minutes for real-time monitoring
+    _gpsTimer = Timer.periodic(const Duration(minutes: 2), (_) {
+      if (mounted) _refreshGpsLocation();
+    });
   }
 
   Future<void> _initGpsLocation() async {
@@ -44,7 +56,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
         return;
       }
 
-      // Step 1: Show LAST KNOWN position instantly (no waiting for GPS satellite lock)
+      // Step 1: Show LAST KNOWN position instantly
       final lastPos = await Geolocator.getLastKnownPosition();
       if (lastPos != null && mounted) {
         ref.read(healthProvider.notifier).updateFromWatch({
@@ -67,7 +79,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
     } catch (_) {}
   }
 
-  /// Called on pull-to-refresh — gets fresh GPS with 5s timeout so spinner doesn't hang
   Future<void> _refreshGpsLocation() async {
     try {
       LocationPermission permission = await Geolocator.checkPermission();
@@ -87,8 +98,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
     } catch (_) {}
   }
 
+
   @override
   void dispose() {
+    _gpsTimer?.cancel();
     _pulseController.dispose();
     super.dispose();
   }
@@ -96,11 +109,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
   @override
   Widget build(BuildContext context) {
     final health = ref.watch(healthProvider);
+    final watchState = ref.watch(watchProvider);
     final isConnected = ref.watch(watchConnectedProvider);
     final isHrSupported = ref.watch(hrSupportedProvider);
     final isBpSupported = ref.watch(bpSupportedProvider);
     final isStepsSupported = ref.watch(stepsSupportedProvider);
     final user = ref.watch(userModelProvider);
+
+    final watchDisplayName = (watchState.deviceName != null && watchState.deviceName!.isNotEmpty)
+        ? watchState.deviceName!
+        : 'Smartwatch';
 
     // Listen for out-of-range watch disconnections to trigger top toast + alert dialog
     ref.listen<String?>(watchOutOfRangeProvider, (previous, deviceName) {
@@ -132,23 +150,44 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text('Wrist Rx', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 22)),
-            if (isConnected)
-              GestureDetector(
-                onTap: () => _confirmDisconnectWatch(context, ref),
-                child: Row(
-                  children: [
-                    Container(width: 6, height: 6,
-                        decoration: const BoxDecoration(color: AppColors.primary, shape: BoxShape.circle)),
-                    const SizedBox(width: 5),
-                    const Text('Watch Connected (Tap to Disconnect)', style: TextStyle(fontSize: 11, color: AppColors.primary, fontWeight: FontWeight.w500)),
-                  ],
-                ),
-              )
-            else
-              const Text('Watch not connected', style: TextStyle(fontSize: 11, color: AppColors.onSurfaceDark)),
+            Text(
+              isConnected ? '$watchDisplayName • Connected' : 'Watch disconnected',
+              style: TextStyle(
+                fontSize: 11,
+                color: isConnected ? Colors.greenAccent : AppColors.onSurfaceDark,
+                fontWeight: isConnected ? FontWeight.w600 : FontWeight.normal,
+              ),
+            ),
           ],
         ),
         actions: [
+          // Watch Details button (visible when Watch is Connected)
+          if (isConnected)
+            GestureDetector(
+              onTap: () => WatchDetailsSheet.show(context),
+              child: Container(
+                margin: const EdgeInsets.only(right: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: AppColors.primary.withOpacity(0.4)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.watch_rounded, color: AppColors.primary, size: 18),
+                    const SizedBox(width: 5),
+                    Text(
+                      watchDisplayName,
+                      style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600),
+                    ),
+                    const SizedBox(width: 5),
+                    const Icon(Icons.circle, color: Colors.greenAccent, size: 6),
+                  ],
+                ),
+              ),
+            ),
           // Settings button
           IconButton(
             icon: const Icon(Icons.settings_rounded, color: Colors.white70),
@@ -188,18 +227,70 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
           child: Column(
             children: [
-              // Connect or Connected Watch Banner
+              // Connect Watch Banner (Only shown when Watch is DISCONNECTED)
               if (!isConnected)
-                _ConnectWatchBanner().animate().fadeIn().slideY(begin: -0.2)
-              else
-                _ConnectedWatchBanner(
-                  onDisconnect: () => _confirmDisconnectWatch(context, ref),
-                ).animate().fadeIn().slideY(begin: -0.2),
+                _ConnectWatchBanner().animate().fadeIn().slideY(begin: -0.2),
 
-              const SizedBox(height: 12),
+              if (!isConnected)
+                const SizedBox(height: 12),
+
+              // Dashboard Section Divider Line
+              Padding(
+                padding: const EdgeInsets.only(top: 4, bottom: 12),
+                child: Row(
+                  children: [
+                    const Text(
+                      'HEALTH METRICS',
+                      style: TextStyle(
+                        color: Colors.white54,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 1.2,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Container(
+                        height: 1,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              Colors.white.withOpacity(0.15),
+                              Colors.transparent,
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    if (isConnected) ...[
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: Colors.green.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: Colors.greenAccent.withOpacity(0.3)),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.sensors_rounded, color: Colors.greenAccent, size: 12),
+                            SizedBox(width: 4),
+                            Text(
+                              'Live Sync',
+                              style: TextStyle(color: Colors.greenAccent, fontSize: 10, fontWeight: FontWeight.w700),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
 
               // Metric Cards Grid (5 Health Cards with hardware capability checks)
               GridView.count(
+
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
                 crossAxisCount: 2,
@@ -246,9 +337,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
                     pulseController: _pulseController,
                     smallValue: isConnected && !isStepsSupported,
                   ),
-                  // 5. GPS Location (Tap to view/share map link)
+                  // 5. GPS Location (Tap to view/share fresh map link)
                   GestureDetector(
-                    onTap: hasGps ? () => showLocationShareDialog(context, health.lat!, health.lng!) : null,
+                    onTap: () async {
+                      // Instantly refresh GPS coordinates right now on card tap
+                      await _refreshGpsLocation();
+                      if (context.mounted) {
+                        final currentHealth = ref.read(healthProvider);
+                        if (currentHealth.lat != null && currentHealth.lng != null) {
+                          showLocationShareDialog(context, currentHealth.lat!, currentHealth.lng!);
+                        }
+                      }
+                    },
                     child: _MetricCard(
                       gradient: AppColors.gpsGradient,
                       icon: Icons.location_on_rounded,
@@ -261,6 +361,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
                     ),
                   ),
                 ],
+
               ).animate().fadeIn(delay: 200.ms),
 
               const SizedBox(height: 20),
@@ -465,6 +566,8 @@ void showLocationShareDialog(BuildContext context, double lat, double lng) {
   }
 
 class _ConnectWatchBanner extends ConsumerWidget {
+
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return GestureDetector(
@@ -736,7 +839,7 @@ class _SosButton extends ConsumerWidget {
       }
     } catch (_) {}
 
-    // 2. Fetch live GPS location
+    // 2. Fetch FRESH live GPS location at the exact second SOS is triggered!
     double? lat;
     double? lng;
     try {
@@ -746,13 +849,34 @@ class _SosButton extends ConsumerWidget {
       }
       if (perm == LocationPermission.whileInUse || perm == LocationPermission.always) {
         final pos = await Geolocator.getCurrentPosition(
-          desiredAccuracy: LocationAccuracy.high,
-          timeLimit: const Duration(seconds: 5),
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.high,
+            timeLimit: Duration(seconds: 5),
+          ),
         );
         lat = pos.latitude;
         lng = pos.longitude;
       }
     } catch (_) {}
+
+    // Fallback if high-accuracy position timed out
+    if (lat == null || lng == null) {
+      try {
+        final lastPos = await Geolocator.getLastKnownPosition();
+        if (lastPos != null) {
+          lat = lastPos.latitude;
+          lng = lastPos.longitude;
+        }
+      } catch (_) {}
+    }
+
+    // Always update local health state with the exact fresh coordinates
+    if (lat != null && lng != null) {
+      ref.read(healthProvider.notifier).updateFromWatch({
+        'coordinates': {'lat': lat, 'lng': lng}
+      });
+    }
+
 
     // 3. Post SOS Event to Backend API
     try {
@@ -767,7 +891,10 @@ class _SosButton extends ConsumerWidget {
     // 4. Get User Emergency Contacts & Dispatch Alerts
     final user = ref.read(userModelProvider);
     final contacts = user?.settings.emergencyContacts ?? [];
+    final savedSosMethod = await StorageService.getSetting<String>('sos_method');
+    final sosMethod = savedSosMethod ?? user?.settings.sosMethod ?? 'auto_sms';
     final contactNames = contacts.map((c) => c.name).join(', ');
+
     final phoneNumbers = contacts.map((c) => c.phone).where((p) => p.isNotEmpty).toList();
 
     String locationUrl = '';
@@ -777,32 +904,63 @@ class _SosButton extends ConsumerWidget {
     final sosMsg = '🚨 EMERGENCY SOS ALERT! I need immediate help! My Location:$locationUrl';
 
     bool actionDispatched = false;
-    if (phoneNumbers.isNotEmpty) {
-      final firstPhone = phoneNumbers.first.replaceAll(RegExp(r'[^\d+]'), '');
-      
-      // 1. Try SMS Intent (Direct Launch)
-      final smsUri = Uri(
-        scheme: 'sms',
-        path: firstPhone,
-        queryParameters: <String, String>{
-          'body': sosMsg,
-        },
-      );
+    int autoSmsCount = 0;
 
-      try {
-        actionDispatched = await launchUrl(smsUri, mode: LaunchMode.externalApplication);
-      } catch (_) {
-        actionDispatched = false;
+    if (phoneNumbers.isNotEmpty) {
+      // Request SMS runtime permission if Automatic Direct SMS mode is selected
+      if (sosMethod == 'auto_sms') {
+        try {
+          var status = await Permission.sms.status;
+          if (!status.isGranted) {
+            status = await Permission.sms.request();
+          }
+        } catch (_) {}
+
+        const platform = MethodChannel('com.wristrx.app/sms');
+        for (final phone in phoneNumbers) {
+          try {
+            final cleanPhone = phone.replaceAll(RegExp(r'[^\d+]'), '');
+            if (cleanPhone.isNotEmpty) {
+              await platform.invokeMethod('sendDirectSms', {
+                'phone': cleanPhone,
+                'message': sosMsg,
+              });
+              autoSmsCount++;
+            }
+          } catch (_) {}
+        }
+        if (autoSmsCount > 0) {
+          actionDispatched = true;
+        }
       }
 
-      // 2. Fallback: WhatsApp URI
+      // Priority 2: WhatsApp Direct Launch (Only if selected or if auto_sms completely failed)
+      if (!actionDispatched && sosMethod == 'whatsapp') {
+        for (final phone in phoneNumbers) {
+          final cleanPhone = phone.replaceAll(RegExp(r'[^\d+]'), '');
+          final waUri = Uri.parse('https://wa.me/$cleanPhone?text=${Uri.encodeComponent(sosMsg)}');
+          try {
+            await launchUrl(waUri, mode: LaunchMode.externalApplication);
+            actionDispatched = true;
+          } catch (_) {}
+        }
+      }
+
+      // Priority 3: Interactive SMS App (Fallback or if manual_sms selected)
       if (!actionDispatched) {
-        final waUri = Uri.parse('https://wa.me/$firstPhone?text=${Uri.encodeComponent(sosMsg)}');
+        final allPhones = phoneNumbers.map((p) => p.replaceAll(RegExp(r'[^\d+]'), '')).where((p) => p.isNotEmpty).join(',');
+        final smsUri = Uri(
+          scheme: 'sms',
+          path: allPhones,
+          queryParameters: <String, String>{'body': sosMsg},
+        );
         try {
-          actionDispatched = await launchUrl(waUri, mode: LaunchMode.externalApplication);
+          actionDispatched = await launchUrl(smsUri, mode: LaunchMode.externalApplication);
         } catch (_) {}
       }
     }
+
+
 
     if (context.mounted) {
       showDialog(
@@ -813,15 +971,20 @@ class _SosButton extends ConsumerWidget {
           title: const Row(children: [
             Icon(Icons.check_circle_rounded, color: Colors.green, size: 28),
             SizedBox(width: 10),
-            Text('SOS Triggered!', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700)),
+            Text('SOS Alert Dispatched!', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700)),
           ]),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('🚨 Emergency alert logged & broadcasted.',
-                  style: TextStyle(color: Colors.white70, fontSize: 13, height: 1.4)),
+              Text(
+                autoSmsCount > 0
+                    ? '🚨 Automatic Emergency SMS sent to $autoSmsCount contact(s) directly from your SIM card!'
+                    : '🚨 Emergency alert logged & broadcasted to $contactNames.',
+                style: const TextStyle(color: Colors.white70, fontSize: 13, height: 1.4),
+              ),
               const SizedBox(height: 12),
+
               if (lat != null && lng != null)
                 Material(
                   color: Colors.transparent,

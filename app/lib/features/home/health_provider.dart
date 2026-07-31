@@ -2,14 +2,16 @@ import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/services/api_service.dart';
+import '../../core/services/storage_service.dart';
 import '../../core/constants/api_constants.dart';
 import '../../core/services/websocket_service.dart';
 import '../../core/services/pedometer_service.dart';
 import '../../shared/models/models.dart';
+import '../auth/auth_provider.dart';
 
 final healthProvider = StateNotifierProvider<HealthNotifier, HealthReading>((ref) {
   final notifier = HealthNotifier(ref);
-  // Fetch latest stored calculated telemetry on startup
+  // Fetch latest stored telemetry (local storage first) on startup
   notifier.fetchLatestDataFromBackend();
   return notifier;
 });
@@ -36,7 +38,7 @@ class HealthNotifier extends StateNotifier<HealthReading> {
   }
 
   void startContinuousSync() {
-    // 1. Load latest calculated stored data first
+    // 1. Load latest stored data first (local device storage)
     fetchLatestDataFromBackend();
 
     // 2. Start hardware pedometer step counter sensor as live fallback ONLY when watch is disconnected
@@ -47,16 +49,19 @@ class HealthNotifier extends StateNotifier<HealthReading> {
       }
     });
 
-    // 3. Connect WebSocket for live push
-    _ws.connect(onDataReceived: (data) {
-      updateFromWatch(data);
-    });
+    // 3. Connect WebSocket for live push ONLY if user enabled cloud sync
+    final user = _ref.read(userModelProvider);
+    if (user?.settings.syncCloud == true) {
+      _ws.connect(onDataReceived: (data) {
+        updateFromWatch(data);
+      });
 
-    // 4. 3-second backend sync for newly calculated readings
-    _syncTimer?.cancel();
-    _syncTimer = Timer.periodic(const Duration(seconds: 3), (_) {
-      fetchLatestDataFromBackend();
-    });
+      // 4. 3-second backend sync for cloud enabled accounts
+      _syncTimer?.cancel();
+      _syncTimer = Timer.periodic(const Duration(seconds: 3), (_) {
+        fetchLatestDataFromBackend();
+      });
+    }
   }
 
   void stopContinuousSync() {
@@ -65,45 +70,25 @@ class HealthNotifier extends StateNotifier<HealthReading> {
   }
 
   Future<void> fetchLatestDataFromBackend() async {
-    final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid == null) return;
-    try {
-      final res = await _api.get(ApiConstants.todayData(uid));
-      if (res['data'] != null) {
-        final data = res['data'];
-        final double? newHr = (data['heartRate'] as num?)?.toDouble();
-        final double? newSys = (data['systolic'] as num?)?.toDouble();
-        final double? newDia = (data['diastolic'] as num?)?.toDouble();
-        final int? newSteps = (data['steps'] as num?)?.toInt();
-        final double? newLat = (data['coordinates']?['lat'] as num?)?.toDouble();
-        final double? newLng = (data['coordinates']?['lng'] as num?)?.toDouble();
-
-        // For steps: backend data only wins if higher than current live BLE data.
-        // This prevents stale backend data from overwriting real-time BLE step count.
-        final int resolvedSteps = (newSteps != null && newSteps > state.steps)
-            ? newSteps
-            : state.steps;
-
-        if (newSteps != null && newSteps > _baseSteps) {
-          _baseSteps = newSteps;
-        }
-
-        state = HealthReading(
-          heartRate: (newHr != null && newHr > 0) ? newHr : state.heartRate,
-          systolic: (newSys != null && newSys > 0) ? newSys : state.systolic,
-          diastolic: (newDia != null && newDia > 0) ? newDia : state.diastolic,
-          steps: resolvedSteps,
-          lat: (newLat != null) ? newLat : state.lat,
-          lng: (newLng != null) ? newLng : state.lng,
-        );
-
-      }
-    } catch (_) {}
+    // Always load local device storage reading only (Health data is 100% local)
+    final localData = await StorageService.getLocalHealthReading();
+    if (localData != null) {
+      final localReading = HealthReading.fromJson(localData);
+      state = HealthReading(
+        heartRate: localReading.heartRate > 0 ? localReading.heartRate : state.heartRate,
+        systolic: localReading.systolic > 0 ? localReading.systolic : state.systolic,
+        diastolic: localReading.diastolic > 0 ? localReading.diastolic : state.diastolic,
+        steps: localReading.steps > state.steps ? localReading.steps : state.steps,
+        lat: localReading.lat ?? state.lat,
+        lng: localReading.lng ?? state.lng,
+      );
+      if (localReading.steps > _baseSteps) _baseSteps = localReading.steps;
+    }
   }
 
+
   /// Smart Telemetry Merging:
-  /// Never overwrite valid calculated measurements with transient 0 values sent during calculation.
-  /// For steps: accumulate live watch steps on top of pre-existing app baseline steps.
+  /// Updates live state AND saves reading locally to device storage.
   void updateFromWatch(Map<String, dynamic> data) {
     final Map<String, dynamic> payload = (data['payload'] is Map<String, dynamic>)
         ? data['payload']
@@ -140,6 +125,9 @@ class HealthNotifier extends StateNotifier<HealthReading> {
       lat: validLat,
       lng: validLng,
     );
+
+    // Save reading locally to device storage (wiped on app uninstall)
+    StorageService.saveLocalHealthReading(state.toJson());
   }
 
 
@@ -147,11 +135,14 @@ class HealthNotifier extends StateNotifier<HealthReading> {
     stopContinuousSync();
     _baseSteps = 0;
     state = HealthReading.empty;
+    StorageService.clearLocalHealthReading();
   }
 
   /// Only clears health data display - does NOT stop sync timers or WebSocket
   void clearData() {
     _baseSteps = 0;
     state = HealthReading.empty;
+    StorageService.clearLocalHealthReading();
   }
 }
+

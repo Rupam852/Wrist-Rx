@@ -106,10 +106,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         title: const Row(children: [
           Icon(Icons.warning_amber_rounded, color: Colors.redAccent, size: 28),
           SizedBox(width: 10),
-          Text('Wipe All Data?', style: TextStyle(color: Colors.white)),
+          Text('Wipe All Local Data?', style: TextStyle(color: Colors.white)),
         ]),
         content: const Text(
-          'Are you sure you want to clean all your health telemetry data from the database and app?\n\nThis action cannot be undone and resets the app state like a brand new installation.',
+          'Are you sure you want to clean all your local health metrics, steps, location data, and AI chat history from this device?\n\nThis action cannot be undone and resets the app state like a brand new installation.',
           style: TextStyle(color: Colors.white70),
         ),
         actions: [
@@ -134,7 +134,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   TopToast.show(
                     context,
                     title: 'Data Cleaned!',
-                    message: 'All health data & AI chat history wiped successfully.',
+                    message: 'All local health metrics, steps, & AI chat history wiped successfully.',
                     type: TopToastType.success,
                   );
                 }
@@ -172,7 +172,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         padding: const EdgeInsets.all(16),
         children: [
           // ── App Preferences ────────────────────────────
-          _SectionHeader('⚙ App Preferences'),
+          _SectionHeader('App Preferences'),
           _SettingsTile(
             title: 'Haptic Feedback',
             subtitle: 'Vibrate phone on SOS & key health alerts',
@@ -180,15 +180,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             onChanged: (v) => _updateToggle('haptic', v),
           ),
           _SettingsTile(
-            title: 'Sync Data on Cloud',
-            subtitle: 'Backup & sync health telemetry to cloud database (OFF by default)',
+            title: 'Sync Settings on Cloud',
+            subtitle: 'Backup profile & emergency contacts (Health data remains 100% local on device)',
             value: settings.syncCloud,
             onChanged: (v) => _updateToggle('syncCloud', v),
           ),
+
           const SizedBox(height: 24),
 
           // ── AI Model Configuration ─────────────────────
-          _SectionHeader('🤖 Gemini AI Configuration'),
+          _SectionHeader('Gemini AI Configuration'),
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
@@ -316,64 +317,41 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ),
           const SizedBox(height: 24),
 
-          // ── Emergency Contacts ─────────────────────────
-          _SectionHeader('🚨 Emergency Contacts (SOS)'),
+          // ── SOS Emergency Settings ─────────────────────
+          _SectionHeader('SOS Emergency Settings'),
           Container(
-            padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: AppColors.cardDark,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Colors.white.withOpacity(0.07)),
+              border: Border.all(color: AppColors.sosRed.withOpacity(0.3)),
             ),
-            child: Column(
-              children: [
-                ...(user?.settings.emergencyContacts ?? []).asMap().entries.map((e) =>
-                  ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: CircleAvatar(
-                      backgroundColor: AppColors.sosRed.withOpacity(0.15),
-                      child: Text('${e.key + 1}', style: const TextStyle(color: AppColors.sosRed, fontWeight: FontWeight.w700)),
-                    ),
-                    title: Text(e.value.name, style: const TextStyle(color: Colors.white)),
-                    subtitle: Text(e.value.phone, style: TextStyle(color: AppColors.onSurfaceDark)),
-                    trailing: IconButton(
-                      icon: const Icon(Icons.delete_outline_rounded, color: Colors.red),
-                      onPressed: () async {
-                        final currentContacts = List<EmergencyContact>.from(user?.settings.emergencyContacts ?? []);
-                        if (e.key < currentContacts.length) {
-                          final removedName = currentContacts[e.key].name;
-                          currentContacts.removeAt(e.key);
-                          await ref.read(userModelProvider.notifier).updateSettings(
-                            user!.settings.copyWith(emergencyContacts: currentContacts));
-                          if (context.mounted) {
-                            TopToast.show(
-                              context,
-                              title: 'Contact Removed',
-                              message: '$removedName removed from emergency contacts.',
-                              type: TopToastType.info,
-                            );
-                          }
-                        }
-                      },
-                    ),
-                  ),
+            child: ListTile(
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+              leading: Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: AppColors.sosRed.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: CircleAvatar(
-                    backgroundColor: AppColors.primary.withOpacity(0.15),
-                    child: const Icon(Icons.add_rounded, color: AppColors.primary),
-                  ),
-                  title: const Text('Add Emergency Contact', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w500)),
-                  onTap: () => _showAddContactDialog(context),
-                ),
-              ],
+                child: const Icon(Icons.emergency_rounded, color: AppColors.sosRed, size: 24),
+              ),
+              title: const Text('SOS Emergency Configuration',
+                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 15)),
+              subtitle: Text(
+                user?.settings.emergencyContacts.isNotEmpty == true
+                    ? 'Mode: ${user?.settings.sosMethod == "auto_sms" ? "Automatic SIM SMS" : user?.settings.sosMethod == "whatsapp" ? "WhatsApp Direct" : "Manual SMS App"} • ${user?.settings.emergencyContacts.length} Contact(s)'
+                    : 'Configure dispatch mode & add emergency contacts',
+                style: const TextStyle(color: Colors.white60, fontSize: 12),
+              ),
+              trailing: const Icon(Icons.chevron_right_rounded, color: Colors.white54),
+              onTap: () => context.push('/sos-settings'),
             ),
           ),
           const SizedBox(height: 24),
 
+
           // ── About App ──────────────────────────────────
-          _SectionHeader('ℹ️ About App'),
+          _SectionHeader('About App'),
           Container(
             decoration: BoxDecoration(
               color: AppColors.cardDark,
@@ -399,7 +377,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           const SizedBox(height: 24),
 
           // ── Data & Storage Management ─────────────────
-          _SectionHeader('🧹 Data & Storage Management'),
+          _SectionHeader('Data & Storage Management'),
+
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
@@ -411,12 +390,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'Clean My Data from Database & App',
+                  'Clean My Local Data & App State',
                   style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.w700, fontSize: 15),
                 ),
                 const SizedBox(height: 6),
                 const Text(
-                  'Wipes all stored health metrics, steps, readings from database and resets app state like a fresh install.',
+                  'Wipes all local health metrics, steps, location, and AI chat history from this device, resetting app state like a fresh install.',
                   style: TextStyle(color: Colors.white70, fontSize: 12),
                 ),
                 const SizedBox(height: 14),
@@ -443,6 +422,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ),
           ),
           const SizedBox(height: 32),
+
         ],
       ),
     );
