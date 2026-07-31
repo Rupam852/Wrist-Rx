@@ -18,9 +18,30 @@ class SosSettingsScreen extends ConsumerStatefulWidget {
 class _SosSettingsScreenState extends ConsumerState<SosSettingsScreen> {
   final _nameCtrl = TextEditingController();
   final _phoneCtrl = TextEditingController();
+  String? _selectedSosMethod;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSavedSosMethod();
+  }
+
+  Future<void> _loadSavedSosMethod() async {
+    final saved = await StorageService.getSetting<String>('sos_method');
+    if (saved != null && mounted) {
+      setState(() {
+        _selectedSosMethod = saved;
+      });
+    }
+  }
 
   Future<void> _updateSosMethod(String method) async {
-    // Save locally in SharedPreferences immediately
+    // Update local state instantly on tap so UI radio button highlights immediately
+    setState(() {
+      _selectedSosMethod = method;
+    });
+
+    // Save locally in SharedPreferences
     await StorageService.saveSetting('sos_method', method);
 
     // Request SMS permission if auto_sms is selected
@@ -47,7 +68,6 @@ class _SosSettingsScreenState extends ConsumerState<SosSettingsScreen> {
     }
 
     if (mounted) {
-      setState(() {});
       TopToast.show(
         context,
         title: 'Dispatch Mode Updated',
@@ -60,6 +80,7 @@ class _SosSettingsScreenState extends ConsumerState<SosSettingsScreen> {
       );
     }
   }
+
 
 
   void _showAddContactDialog() {
@@ -153,7 +174,8 @@ class _SosSettingsScreenState extends ConsumerState<SosSettingsScreen> {
     final user = ref.watch(userModelProvider);
     final settings = user?.settings ?? UserSettings();
     final contacts = settings.emergencyContacts;
-    final currentMethod = settings.sosMethod;
+    final currentMethod = _selectedSosMethod ?? settings.sosMethod;
+
 
     return Scaffold(
       backgroundColor: AppColors.backgroundDark,
