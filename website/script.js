@@ -3,6 +3,17 @@
    Developed by Rupam Bairagya
    ════════════════════════════════════════════════════════════════ */
 
+// Smooth Scroll to Section without updating URL address bar
+function scrollToSection(sectionId) {
+  const element = document.getElementById(sectionId);
+  if (element) {
+    element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    if (history.pushState) {
+      history.pushState(null, null, window.location.pathname);
+    }
+  }
+}
+
 // Sticky Navbar Scroll Effect
 window.addEventListener('scroll', () => {
   const navbar = document.getElementById('navbar');
