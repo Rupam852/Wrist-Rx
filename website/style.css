@@ -49,6 +49,19 @@ body {
   line-height: 1.6;
 }
 
+/* ── Smooth Scroll Reveal Animations ─────────────────────────────── */
+.reveal {
+  opacity: 0;
+  transform: translateY(35px);
+  transition: opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1), transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: opacity, transform;
+}
+
+.reveal.active {
+  opacity: 1;
+  transform: translateY(0);
+}
+
 /* ── Ambient Soft Sage & Emerald Glows (GPU Accelerated) ───────────── */
 .ambient-glow {
   position: absolute;
