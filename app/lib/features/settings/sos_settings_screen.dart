@@ -50,12 +50,7 @@ class _SosSettingsScreenState extends ConsumerState<SosSettingsScreen> {
         final status = await Permission.sms.request();
         if (status.isDenied || status.isPermanentlyDenied) {
           if (mounted) {
-            TopToast.show(
-              context,
-              title: 'SMS Permission Needed',
-              message: 'Please grant SMS permission so emergency alerts can send automatically from your SIM card.',
-              type: TopToastType.warning,
-            );
+            _showRestrictedPermissionGuide(context);
           }
         }
       } catch (_) {}
@@ -80,6 +75,71 @@ class _SosSettingsScreenState extends ConsumerState<SosSettingsScreen> {
       );
     }
   }
+
+  void _showRestrictedPermissionGuide(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (dlgCtx) => AlertDialog(
+        backgroundColor: AppColors.cardDark,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Icon(Icons.shield_outlined, color: Colors.amberAccent, size: 24),
+            SizedBox(width: 10),
+            Text('Android Security Protection', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700)),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Android 13/14/15 blocks background SMS permissions for newly installed APKs by default ("Restricted Settings").',
+              style: TextStyle(color: Colors.white70, fontSize: 13),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.05),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.amberAccent.withOpacity(0.3)),
+              ),
+              child: const Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('How to unlock in 3 easy steps:', style: TextStyle(color: Colors.amberAccent, fontSize: 12, fontWeight: FontWeight.w700)),
+                  SizedBox(height: 6),
+                  Text('1. Tap "Open App Info" button below.', style: TextStyle(color: Colors.white70, fontSize: 12)),
+                  Text('2. Tap 3 dots (⋮) in top right corner.', style: TextStyle(color: Colors.white70, fontSize: 12)),
+                  Text('3. Tap "Allow restricted settings".', style: TextStyle(color: Colors.white70, fontSize: 12)),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dlgCtx),
+            child: const Text('Cancel', style: TextStyle(color: Colors.white54)),
+          ),
+          ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            onPressed: () {
+              Navigator.pop(dlgCtx);
+              openAppSettings();
+            },
+            icon: const Icon(Icons.settings_rounded, color: Colors.white, size: 16),
+            label: const Text('Open App Info', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+          ),
+        ],
+      ),
+    );
+  }
+
 
 
 
