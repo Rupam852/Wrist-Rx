@@ -740,11 +740,147 @@ body {
   text-decoration: underline;
 }
 
+/* ── How It Works Section ─────────────────────────────────────────── */
+.how-it-works-section {
+  padding-bottom: 100px;
+}
+
+.steps-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+}
+
+.step-card {
+  background: var(--bg-card);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-lg);
+  padding: 32px;
+  position: relative;
+  box-shadow: var(--shadow-glass);
+}
+
+.step-badge {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--primary-dark);
+  background: rgba(0, 200, 83, 0.12);
+  border: 1px solid rgba(5, 150, 105, 0.2);
+  padding: 4px 12px;
+  border-radius: 20px;
+  display: inline-block;
+  margin-bottom: 16px;
+}
+
+/* ── Smartwatch Ecosystem Brands Grid ────────────────────────────── */
+.ecosystem-section {
+  padding-bottom: 100px;
+}
+
+.brand-chips-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 16px;
+}
+
+.brand-chip {
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(5, 150, 105, 0.18);
+  border-radius: var(--radius-md);
+  padding: 16px 12px;
+  text-align: center;
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--text-dark);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.02);
+  transition: all 0.3s ease;
+}
+
+.brand-chip:hover {
+  transform: translateY(-4px);
+  border-color: var(--primary);
+  background: #FFFFFF;
+  box-shadow: 0 10px 24px rgba(0, 200, 83, 0.15);
+}
+
+/* ── Gemini AI Showcase Section ──────────────────────────────────── */
+.ai-section {
+  padding-bottom: 100px;
+}
+
+.ai-card {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(240, 247, 243, 0.9) 100%);
+  backdrop-filter: blur(28px);
+  border: 1px solid var(--border-glass-glow);
+  border-radius: 32px;
+  padding: 40px;
+  box-shadow: var(--shadow-glass);
+  max-width: 960px;
+  margin: 0 auto;
+}
+
+.ai-prompts-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-top: 24px;
+}
+
+.ai-prompt-box {
+  background: #FFFFFF;
+  border: 1px solid rgba(5, 150, 105, 0.2);
+  border-radius: 16px;
+  padding: 16px;
+  font-size: 14px;
+  color: var(--text-dark);
+  font-weight: 600;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.02);
+}
+
+/* ── FAQ Section ──────────────────────────────────────────────────── */
+.faq-section {
+  padding-bottom: 100px;
+}
+
+.faq-grid {
+  max-width: 860px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.faq-item {
+  background: var(--bg-card);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-md);
+  padding: 20px 24px;
+  box-shadow: var(--shadow-glass);
+}
+
+.faq-question {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text-dark);
+  margin-bottom: 8px;
+}
+
+.faq-answer {
+  font-size: 15px;
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+
 /* ── Responsive Design ────────────────────────────────────────────── */
 @media (max-width: 992px) {
   .hero-title { font-size: 42px; }
   .mockup-card { grid-template-columns: 1fr; }
   .features-grid { grid-template-columns: repeat(2, 1fr); }
+  .steps-grid { grid-template-columns: 1fr; }
+  .brand-chips-grid { grid-template-columns: repeat(3, 1fr); }
+  .ai-prompts-grid { grid-template-columns: 1fr; }
   .collaborators-grid { grid-template-columns: repeat(3, 1fr); }
   .footer-grid { grid-template-columns: 1fr 1fr; }
 }
@@ -753,6 +889,7 @@ body {
   .hero-title { font-size: 32px; }
   .nav-links { display: none; }
   .features-grid { grid-template-columns: 1fr; }
+  .brand-chips-grid { grid-template-columns: repeat(2, 1fr); }
   .collaborators-grid { grid-template-columns: repeat(2, 1fr); }
   .stats-grid { grid-template-columns: repeat(2, 1fr); }
   .footer-grid { grid-template-columns: 1fr; }
