@@ -198,10 +198,153 @@ body {
   font-size: 14px;
   font-weight: 600;
   transition: color 0.2s ease;
+  cursor: pointer;
 }
 
 .nav-links a:hover {
   color: var(--primary-dark);
+}
+
+/* ── Nav Right (Download + Hamburger) ────────────────────────────── */
+.nav-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+/* ── Hamburger Button ────────────────────────────────────────────── */
+.hamburger {
+  display: none;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 5px;
+  width: 40px;
+  height: 40px;
+  background: rgba(255, 255, 255, 0.8);
+  border: 1px solid rgba(5, 150, 105, 0.2);
+  border-radius: 10px;
+  cursor: pointer;
+  padding: 8px;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.hamburger span {
+  display: block;
+  width: 20px;
+  height: 2px;
+  background: var(--text-dark);
+  border-radius: 2px;
+  transition: all 0.3s ease;
+  max-width: 20px;
+}
+
+.hamburger.open span:nth-child(1) {
+  transform: translateY(7px) rotate(45deg);
+}
+.hamburger.open span:nth-child(2) {
+  opacity: 0;
+  transform: scaleX(0);
+}
+.hamburger.open span:nth-child(3) {
+  transform: translateY(-7px) rotate(-45deg);
+}
+
+/* ── Mobile Menu Drawer ──────────────────────────────────────────── */
+.mobile-menu {
+  display: none;
+  position: fixed;
+  top: 56px;
+  left: 0;
+  right: 0;
+  z-index: 99;
+  background: rgba(248, 250, 249, 0.98);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(5, 150, 105, 0.12);
+  box-shadow: 0 12px 40px rgba(5, 150, 105, 0.1);
+  transform: translateY(-10px);
+  opacity: 0;
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease;
+  pointer-events: none;
+}
+
+.mobile-menu.open {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: all;
+}
+
+.mobile-menu-links {
+  display: flex;
+  flex-direction: column;
+  padding: 12px 20px 20px;
+  gap: 4px;
+}
+
+.mobile-menu-links a {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 13px 16px;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-dark);
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease;
+  border: none;
+  background: transparent;
+}
+
+.mobile-menu-links a:hover {
+  background: rgba(0, 200, 83, 0.08);
+  color: var(--primary-dark);
+}
+
+.mobile-menu-icon {
+  font-size: 18px;
+  width: 28px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.mobile-download-btn {
+  margin-top: 8px !important;
+  background: linear-gradient(135deg, #00C853 0%, #10B981 100%) !important;
+  color: #FFFFFF !important;
+  justify-content: center;
+  border-radius: 14px !important;
+  font-weight: 800 !important;
+  box-shadow: 0 6px 18px rgba(0, 200, 83, 0.3);
+}
+
+.mobile-download-btn:hover {
+  background: linear-gradient(135deg, #00E676 0%, #00C853 100%) !important;
+  transform: translateY(-1px);
+  box-shadow: 0 10px 28px rgba(0, 200, 83, 0.4) !important;
+}
+
+/* ── Mobile Menu Backdrop ────────────────────────────────────────── */
+.mobile-menu-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 98;
+  background: rgba(15, 23, 42, 0.25);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+
+.mobile-menu-backdrop.open {
+  opacity: 1;
+  pointer-events: all;
 }
 
 .btn-primary {
@@ -953,7 +1096,7 @@ body {
     width: 100% !important;
     max-width: 100% !important;
   }
-  .hero { padding-top: 95px; padding-bottom: 60px; }
+  .hero { padding-top: 80px; padding-bottom: 60px; }
   .hero-title { font-size: 32px; letter-spacing: -0.8px; }
   .hero-subtitle { font-size: 15px; padding: 0; }
   .hero-buttons { flex-direction: column; width: 100%; gap: 12px; }
@@ -963,6 +1106,13 @@ body {
   .ai-card { padding: 24px 16px; border-radius: 24px; }
   .mockup-wrapper { width: 100%; }
   .mockup-card { padding: 20px 16px; border-radius: 24px; grid-template-columns: 1fr; width: 100%; }
+
+  /* Hamburger menu: hide desktop nav, show mobile controls */
+  .nav-links { display: none !important; }
+  .nav-right .btn-primary { display: none !important; }
+  .hamburger { display: flex !important; }
+  .mobile-menu { display: block; }
+  .mobile-menu-backdrop { display: block; }
 }
 
 @media (max-width: 480px) {

@@ -14,6 +14,33 @@ function scrollToSection(sectionId) {
   }
 }
 
+// ── Hamburger Mobile Menu ─────────────────────────────────────────
+function toggleMobileMenu() {
+  const menu = document.getElementById('mobile-menu');
+  const backdrop = document.getElementById('mobile-backdrop');
+  const btn = document.getElementById('hamburger-btn');
+  const isOpen = menu.classList.contains('open');
+
+  if (isOpen) {
+    closeMobileMenu();
+  } else {
+    menu.classList.add('open');
+    backdrop.classList.add('open');
+    btn.classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+}
+
+function closeMobileMenu() {
+  const menu = document.getElementById('mobile-menu');
+  const backdrop = document.getElementById('mobile-backdrop');
+  const btn = document.getElementById('hamburger-btn');
+  menu.classList.remove('open');
+  backdrop.classList.remove('open');
+  btn.classList.remove('open');
+  document.body.style.overflow = '';
+}
+
 // Sticky Navbar Scroll Effect
 window.addEventListener('scroll', () => {
   const navbar = document.getElementById('navbar');
@@ -58,6 +85,7 @@ function previewImage(src, name, role) {
 // Close Modal on Escape Keypress
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {
+    closeMobileMenu();
     closeModal('img-modal-overlay');
     closeModal('privacy-modal');
     closeModal('terms-modal');
