@@ -196,23 +196,22 @@ class AboutScreen extends StatelessWidget {
                   width: 90,
                   height: 90,
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF2F4F7),
+                    color: Colors.transparent,
                     borderRadius: BorderRadius.circular(24),
                     boxShadow: [
                       BoxShadow(
-                        color: AppColors.primary.withOpacity(0.3),
+                        color: AppColors.primary.withOpacity(0.35),
                         blurRadius: 24,
                         offset: const Offset(0, 8),
                       ),
                     ],
                   ),
-                  child: Center(
-                    child: CustomPaint(
-                      size: const Size(54, 54),
-                      painter: _LogoPainter(),
-                    ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(24),
+                    child: Image.asset('assets/images/app_logo.png', fit: BoxFit.cover),
                   ),
                 ).animate().scale(duration: 400.ms, curve: Curves.easeOutBack),
+
                 const SizedBox(height: 16),
                 const Text(
                   'Wrist Rx',
