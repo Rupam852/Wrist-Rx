@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!-- Green heart shape -->
+  <path d="M32 56 C32 56 6 38 6 22 C6 13.16 13.16 6 22 6 C26.54 6 30.62 7.94 33.6 11.04 C33.74 11.18 33.87 11.32 34 11.46 C34.13 11.32 34.26 11.18 34.4 11.04 C37.38 7.94 41.46 6 46 6 C54.84 6 62 13.16 62 22 C62 38 36 56 32 56 Z"
+        fill="#00C853"
+        transform="translate(-2, 0) scale(1.05, 1.0)"/>
+  <!-- White ECG / pulse line inside the heart -->
+  <polyline points="10,32 18,32 21,24 25,40 29,28 33,36 37,32 54,32"
+            fill="none"
+            stroke="#FFFFFF"
+            stroke-width="4"
+            stroke-linecap="round"
+            stroke-linejoin="round"/>
+</svg>
