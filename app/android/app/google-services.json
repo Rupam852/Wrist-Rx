@@ -14,6 +14,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "353387646546-mivd5vabu38kqie4q160tpiv9niavhmk.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.wristrx.app",
+            "certificate_hash": "e2320a98937cd69acd8be1d05cea7665f4e0e72d"
+          }
+        },
+        {
           "client_id": "353387646546-spbe1uskor8lig8vmq1cv1oufsm1njhj.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
