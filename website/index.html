@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Wrist Rx - Smart Health Companion & SOS Emergency App</title>
+  <meta name="description" content="Wrist Rx connects 50+ smartwatch brands, tracks hybrid BLE pedometer steps, provides instant 1-tap SOS emergency protection, and features a Gemini AI health assistant.">
+  <link rel="icon" type="image/png" href="assets/images/app_logo.png">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- Ambient Glow Effects -->
+  <div class="ambient-glow glow-1"></div>
+  <div class="ambient-glow glow-2"></div>
+  <div class="ambient-glow glow-3"></div>
+
+  <!-- Navigation Bar -->
+  <header class="navbar" id="navbar">
+    <div class="container nav-container">
+      <a href="#" class="nav-brand">
+        <img src="assets/images/app_logo.png" alt="Wrist Rx Logo" class="nav-logo">
+        <span class="nav-title">Wrist Rx</span>
+        <span class="nav-badge">v1.0.0</span>
+      </a>
+
+      <ul class="nav-links">
+        <li><a href="#features">Features</a></li>
+        <li><a href="#collaborators">Collaborators</a></li>
+        <li><a onclick="openModal('privacy-modal')">Privacy Policy</a></li>
+        <li><a onclick="openModal('terms-modal')">Terms</a></li>
+      </ul>
+
+      <a href="https://neo-files-transfer.pages.dev/download/ad3a54a49ab4" target="_blank" rel="noopener noreferrer" class="btn-primary">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Download APK
+      </a>
+    </div>
+  </header>
+
+  <!-- Hero Section -->
+  <section class="hero">
+    <div class="container">
+      <div class="hero-pill">
+        <span class="dot"></span>
+        <span>Powered by Gemini AI & Real-time BLE Sync</span>
+      </div>
+
+      <h1 class="hero-title">
+        Next-Gen Health Tracking & <br>
+        <span class="accent">SOS Emergency Guardian</span>
+      </h1>
+
+      <p class="hero-subtitle">
+        Connect 50+ smartwatch brands seamlessly, track your steps with hybrid BLE pedometer fusion, and protect your loved ones with instant 1-tap SOS emergency dispatch.
+      </p>
+
+      <div class="hero-buttons">
+        <a href="https://neo-files-transfer.pages.dev/download/ad3a54a49ab4" target="_blank" rel="noopener noreferrer" class="btn-primary" style="padding: 16px 36px; font-size: 17px;">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Download Official APK
+        </a>
+        <a href="#features" class="btn-secondary" style="padding: 16px 32px; font-size: 16px;">
+          Explore Features
+        </a>
+      </div>
+
+      <!-- Mockup Card Showcase -->
+      <div class="mockup-wrapper">
+        <div class="mockup-card">
+          <!-- Heart Rate Status Card -->
+          <div class="status-card">
+            <div class="status-header">
+              <span class="status-title">Heart Pulse</span>
+              <div class="status-icon">❤️</div>
+            </div>
+            <div class="status-value">72 <span class="status-unit">BPM</span></div>
+            <div style="font-size: 12px; color: var(--primary-light); font-weight: 600;">Optimal Resting Rhythm</div>
+            <svg class="waveform" viewBox="0 0 100 30" preserveAspectRatio="none">
+              <path d="M0,15 L20,15 L25,5 L30,25 L35,10 L40,18 L45,15 L100,15" fill="none" stroke="#00C853" stroke-width="2.5" stroke-linecap="round"/>
+            </svg>
+          </div>
+
+          <!-- Step Counter Card -->
+          <div class="status-card">
+            <div class="status-header">
+              <span class="status-title">Hybrid Pedometer</span>
+              <div class="status-icon">👟</div>
+            </div>
+            <div class="status-value">8,420 <span class="status-unit">Steps</span></div>
+            <div style="font-size: 12px; color: var(--primary-light); font-weight: 600;">84% of Daily Goal (10,000)</div>
+            <div style="width: 100%; background: rgba(255,255,255,0.1); height: 8px; border-radius: 4px; margin-top: 20px;">
+              <div style="width: 84%; background: linear-gradient(90deg, #00C853, #69F0AE); height: 100%; border-radius: 4px;"></div>
+            </div>
+          </div>
+
+          <!-- SOS Guardian Card -->
+          <div class="status-card" style="border-color: rgba(255, 77, 77, 0.3);">
+            <div class="status-header">
+              <span class="status-title" style="color: #FF6B6B;">SOS Protection</span>
+              <div class="status-icon" style="background: rgba(255, 77, 77, 0.15); color: #FF6B6B;">🚨</div>
+            </div>
+            <div class="status-value" style="font-size: 26px;">ACTIVE</div>
+            <div style="font-size: 12px; color: #FF8E8E; font-weight: 600;">1-Tap Emergency SMS Ready</div>
+            <div style="margin-top: 14px; background: rgba(255, 77, 77, 0.1); border: 1px solid rgba(255, 77, 77, 0.3); border-radius: 10px; padding: 6px 12px; font-size: 11px; color: #FFD1D1;">
+              GPS Coordinates Attached
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Stats Banner -->
+  <section class="stats-section">
+    <div class="container">
+      <div class="stats-grid">
+        <div class="stat-item">
+          <div class="stat-number">50+</div>
+          <div class="stat-label">Smartwatch Brands</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-number">100%</div>
+          <div class="stat-label">Local Data Privacy</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-number">0ms</div>
+          <div class="stat-label">Instant Cloud Sync</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-number">24/7</div>
+          <div class="stat-label">SOS Protection</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Key Features Section -->
+  <section class="features-section" id="features">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-tag">Capabilities</span>
+        <h2 class="section-title">Designed for Ultimate Health & Safety</h2>
+        <p class="section-desc">Wrist Rx bridges the gap between hardware sensors and intelligent cloud assistance.</p>
+      </div>
+
+      <div class="features-grid">
+        <div class="feature-card">
+          <div class="feature-icon-box">⌚</div>
+          <h3 class="feature-title">Universal BLE Sync</h3>
+          <p class="feature-desc">Connect boAt, Fire-Boltt, Noise, Pebble, Xiaomi, Huawei & 50+ BLE smartwatch brands without brand lock-in.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon-box">👟</div>
+          <h3 class="feature-title">Hybrid Pedometer Fusion</h3>
+          <p class="feature-desc">Combines smartwatch step metrics with built-in mobile motion sensors for high-precision step tracking.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon-box">🚨</div>
+          <h3 class="feature-title">One-Tap SOS Emergency</h3>
+          <p class="feature-desc">Instantly trigger emergency siren alerts and send automated SMS with precise GPS coordinates to trusted contacts.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon-box">🤖</div>
+          <h3 class="feature-title">Gemini AI Assistant</h3>
+          <p class="feature-desc">Receive personalized health insights, workout recommendations, and intelligent conversational health advice.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon-box">☁️</div>
+          <h3 class="feature-title">Sync on Cloud</h3>
+          <p class="feature-desc">Manual 1-tap toggle to backup profile and emergency contact settings securely to cloud database online & offline.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon-box">🔒</div>
+          <h3 class="feature-title">100% Data Privacy</h3>
+          <p class="feature-desc">Your health telemetry and personal contacts remain strictly encrypted on your device. Zero unwanted tracking.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Project Collaborators Section -->
+  <section class="collaborators-section" id="collaborators">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-tag">Team</span>
+        <h2 class="section-title">Project Collaborators</h2>
+        <p class="section-desc">Meet the talented contributors who helped build and shape Wrist Rx.</p>
+      </div>
+
+      <div class="collaborators-grid">
+        <!-- Agnik Banerjee -->
+        <div class="collaborator-card">
+          <div class="collab-photo-wrapper" onclick="previewImage('assets/images/contributors/agnik.jpg', 'Agnik Banerjee', 'Project Contributor')">
+            <img src="assets/images/contributors/agnik.jpg" alt="Agnik Banerjee" class="collab-photo">
+          </div>
+          <div class="collab-name">Agnik Banerjee</div>
+          <div class="collab-role">Project Contributor</div>
+          <a href="https://www.instagram.com/agnik._.banerjee?igsh=dzNxczk5dTdlZHJl" target="_blank" rel="noopener noreferrer" class="insta-btn-circle" title="Instagram Profile">
+            <svg viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>
+          </a>
+        </div>
+
+        <!-- Sk Soyel -->
+        <div class="collaborator-card">
+          <div class="collab-photo-wrapper" onclick="previewImage('assets/images/contributors/soyel.jpg', 'Sk Soyel', 'Project Contributor')">
+            <img src="assets/images/contributors/soyel.jpg" alt="Sk Soyel" class="collab-photo">
+          </div>
+          <div class="collab-name">Sk Soyel</div>
+          <div class="collab-role">Project Contributor</div>
+          <a href="https://www.instagram.com/soyel__27?igsh=OHdzaWJwZXFzNHN3" target="_blank" rel="noopener noreferrer" class="insta-btn-circle" title="Instagram Profile">
+            <svg viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>
+          </a>
+        </div>
+
+        <!-- Sanjana Singha -->
+        <div class="collaborator-card">
+          <div class="collab-photo-wrapper" onclick="previewImage('assets/images/contributors/sanjana.jpg', 'Sanjana Singha', 'Project Contributor')">
+            <img src="assets/images/contributors/sanjana.jpg" alt="Sanjana Singha" class="collab-photo">
+          </div>
+          <div class="collab-name">Sanjana Singha</div>
+          <div class="collab-role">Project Contributor</div>
+          <a href="https://www.instagram.com/sanjana_singh_2406?igsh=YWVyZHYyeDBiN2lj" target="_blank" rel="noopener noreferrer" class="insta-btn-circle" title="Instagram Profile">
+            <svg viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>
+          </a>
+        </div>
+
+        <!-- Shreyansh Roy -->
+        <div class="collaborator-card">
+          <div class="collab-photo-wrapper" onclick="previewImage('assets/images/contributors/shreyansh.jpg', 'Shreyansh Roy', 'Project Contributor')">
+            <img src="assets/images/contributors/shreyansh.jpg" alt="Shreyansh Roy" class="collab-photo">
+          </div>
+          <div class="collab-name">Shreyansh Roy</div>
+          <div class="collab-role">Project Contributor</div>
+          <a href="https://www.instagram.com/shreyansh.raw?igsh=dGlpczliM3l1aHcw" target="_blank" rel="noopener noreferrer" class="insta-btn-circle" title="Instagram Profile">
+            <svg viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>
+          </a>
+        </div>
+
+        <!-- Suchandra Jana -->
+        <div class="collaborator-card">
+          <div class="collab-photo-wrapper" onclick="previewImage('assets/images/contributors/suchandra.jpg', 'Suchandra Jana', 'Project Contributor')">
+            <img src="assets/images/contributors/suchandra.jpg" alt="Suchandra Jana" class="collab-photo">
+          </div>
+          <div class="collab-name">Suchandra Jana</div>
+          <div class="collab-role">Project Contributor</div>
+          <a href="https://www.instagram.com/suchandra______?igsh=MWd2ZTR6cHU4YzBlZA==" target="_blank" rel="noopener noreferrer" class="insta-btn-circle" title="Instagram Profile">
+            <svg viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- Interactive Photo Preview Modal -->
+  <div class="modal-overlay" id="img-modal-overlay" onclick="closeModal('img-modal-overlay')">
+    <div class="modal-card img-preview-card" onclick="event.stopPropagation()">
+      <div class="modal-close" onclick="closeModal('img-modal-overlay')">✖</div>
+      <div class="modal-title" id="img-modal-title">Photo Preview</div>
+      <div style="font-size: 13px; color: var(--primary-light);" id="img-modal-subtitle">Contributor</div>
+      <div class="img-preview-frame">
+        <img id="img-modal-src" src="" alt="Preview Photo">
+      </div>
+    </div>
+  </div>
+
+  <!-- Privacy Policy Modal -->
+  <div class="modal-overlay" id="privacy-modal" onclick="closeModal('privacy-modal')">
+    <div class="modal-card" onclick="event.stopPropagation()">
+      <div class="modal-close" onclick="closeModal('privacy-modal')">✖</div>
+      <div class="modal-title">Privacy Policy</div>
+      <div style="font-size: 13px; color: var(--primary);">Wrist Rx Local Data & Encryption Safeguards</div>
+      
+      <div class="modal-body">
+        <p>At Wrist Rx, your privacy and health telemetry security are our highest priority.</p>
+        
+        <h4>1. Local On-Device Storage</h4>
+        <p>Your smartwatch heart rate, pedometer step data, and emergency contacts are stored locally on your mobile device using encrypted SecureStorage technology. We do not sell or monetize personal health telemetry.</p>
+        
+        <h4>2. Bluetooth & Location Permissions</h4>
+        <p>Bluetooth (BLE) permissions are used strictly to discover and receive sensor packets from your paired smartwatch. Location access is required by Android OS for BLE scanning and attaching precise GPS coordinates during emergency SOS alerts.</p>
+        
+        <h4>3. Sync on Cloud Feature</h4>
+        <p>When you manually enable "Sync on Cloud", your profile and emergency contact settings are backed up to our cloud server to ensure instant recovery across your devices.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Terms & Conditions Modal -->
+  <div class="modal-overlay" id="terms-modal" onclick="closeModal('terms-modal')">
+    <div class="modal-card" onclick="event.stopPropagation()">
+      <div class="modal-close" onclick="closeModal('terms-modal')">✖</div>
+      <div class="modal-title">Terms & Conditions</div>
+      <div style="font-size: 13px; color: var(--primary);">Terms of Service for Wrist Rx</div>
+      
+      <div class="modal-body">
+        <p>By downloading and using the Wrist Rx application, you agree to the following terms:</p>
+        
+        <h4>1. Emergency SOS Disclaimer</h4>
+        <p>Wrist Rx SOS Emergency features send SMS messages using your carrier network. Signal availability, carrier charges, and device battery status may affect SMS delivery speed.</p>
+        
+        <h4>2. Medical Advice Disclaimer</h4>
+        <p>Wrist Rx and Gemini AI recommendations provide general wellness insights and are not a substitute for professional medical diagnosis or clinical consultation.</p>
+        
+        <h4>3. Open Usage</h4>
+        <p>Wrist Rx is free to use for personal health tracking and emergency protection.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-grid">
+        <div class="footer-brand">
+          <a href="#" class="nav-brand">
+            <img src="assets/images/app_logo.png" alt="Wrist Rx Logo" class="nav-logo">
+            <span class="nav-title">Wrist Rx</span>
+          </a>
+          <p>Your Personal Health Companion Smartwatch App with Real-time BLE Sync, SOS Emergency Protection, and Gemini AI.</p>
+        </div>
+
+        <div>
+          <h4 class="footer-title">Navigation</h4>
+          <ul class="footer-links">
+            <li><a href="#features">Features</a></li>
+            <li><a href="#collaborators">Collaborators</a></li>
+            <li><a href="#developer">Developer</a></li>
+            <li><a href="https://neo-files-transfer.pages.dev/download/ad3a54a49ab4" target="_blank" rel="noopener noreferrer">Download APK</a></li>
+          </ul>
+        </div>
+
+        <div>
+          <h4 class="footer-title">Legal</h4>
+          <ul class="footer-links">
+            <li><a onclick="openModal('privacy-modal')">Privacy Policy</a></li>
+            <li><a onclick="openModal('terms-modal')">Terms & Conditions</a></li>
+          </ul>
+        </div>
+
+        <div>
+          <h4 class="footer-title">Connect</h4>
+          <ul class="footer-links">
+            <li><a href="https://www.instagram.com/_rupambairagya_?igsh=MWNsNHFiZzE4bnQ5OQ==" target="_blank" rel="noopener noreferrer">Instagram</a></li>
+            <li><a href="https://link-flow-program.vercel.app/rupam-bairagya" target="_blank" rel="noopener noreferrer">LinkFlow Profile</a></li>
+            <li><a href="https://github.com/Rupam852" target="_blank" rel="noopener noreferrer">GitHub Profile</a></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="footer-bottom">
+        <div>© 2026 Wrist Rx. All rights reserved.</div>
+        <div class="footer-credit">
+          Developed with ❤️ by <a href="https://www.instagram.com/_rupambairagya_?igsh=MWNsNHFiZzE4bnQ5OQ==" target="_blank" rel="noopener noreferrer">Rupam Bairagya</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
