@@ -62,11 +62,13 @@ class WatchNotifier extends StateNotifier<WatchState> {
   final _api = ApiService();
   BluetoothDevice? _connectedDevice;
   bool _isManualDisconnect = false;
+  WatchBrandProfile? _detectedBrandProfile;
   final List<StreamSubscription> _bleSubscriptions = [];
   final List<BluetoothCharacteristic> _writeCharacteristics = [];
   final List<BluetoothCharacteristic> _readableCharacteristics = [];
   Timer? _watchPingTimer;
   int _pingCycle = 0; // Rotating probe cycle index
+
 
   Future<void> connectViaBluetooth(BluetoothDevice device) async {
     state = state.copyWith(status: WatchConnectionStatus.connecting, deviceName: device.platformName);
@@ -207,6 +209,10 @@ class WatchNotifier extends StateNotifier<WatchState> {
       }
     }
 
+    // Auto-detect Watch Brand & Model Protocol Profile from Registry
+    final dName = device.platformName.isNotEmpty ? device.platformName : 'Smartwatch';
+    _detectedBrandProfile = WatchProtocolRegistry.detectBrand(dName, manufacturer);
+
     // Resolve Hardware Protocol Mode
     HardwareProtocol resolvedProtocol = HardwareProtocol.vendorGeneric;
     if (isStandardGatt) {
@@ -234,7 +240,7 @@ class WatchNotifier extends StateNotifier<WatchState> {
   }
 
   /// Sends smart sync probes every cycle:
-  /// - Cycles through Step, History, HR, and SpO2 probes cleanly with 30ms delay to avoid Android GATT_BUSY drops
+  /// - Uses auto-detected Brand Protocol Profile if matched, or generic multi-probe fallback
   void _triggerWatchSync() async {
     // 1. Poll readable characteristics continuously for watches that don't auto-notify (e.g. Battery 0x2A19)
     for (final char in _readableCharacteristics) {
@@ -251,6 +257,29 @@ class WatchNotifier extends StateNotifier<WatchState> {
     final cycle = _pingCycle % 3;
     _pingCycle++;
 
+    // 🎯 If Brand Profile was Auto-Detected, send exact brand-tuned probes for 100% accuracy!
+    if (_detectedBrandProfile != null) {
+      for (final char in _writeCharacteristics) {
+        for (final p in _detectedBrandProfile!.batteryProbes) {
+          await _sendBleCommand(char, p);
+        }
+        for (final p in _detectedBrandProfile!.stepProbes) {
+          await _sendBleCommand(char, p);
+        }
+        if (cycle == 0) {
+          for (final p in _detectedBrandProfile!.hrProbes) {
+            await _sendBleCommand(char, p);
+          }
+        } else if (cycle == 1) {
+          for (final p in _detectedBrandProfile!.bpProbes) {
+            await _sendBleCommand(char, p);
+          }
+        }
+      }
+      return;
+    }
+
+    // Generic Multi-Vendor Probe Fallback
     for (final char in _writeCharacteristics) {
       // Always send Battery & Step Probes in every sync cycle so steps and battery update in 100% real-time!
       await _sendBleCommand(char, [0xAB, 0x00, 0x04, 0xFF, 0x91]);
@@ -282,6 +311,7 @@ class WatchNotifier extends StateNotifier<WatchState> {
       }
     }
   }
+
 
 
 
