@@ -30,8 +30,10 @@
   box-sizing: border-box;
   font-family: 'Outfit', sans-serif;
   scroll-behavior: smooth;
-  -ms-overflow-style: none;  /* IE and Edge */
-  scrollbar-width: none;  /* Firefox */
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+  min-width: 0;
+  max-width: 100%;
 }
 
 /* ── Hidden / Invisible Scrollbar ───────────────────────────────── */
@@ -43,14 +45,18 @@
 
 html {
   overflow-x: hidden;
+  overflow-x: clip;
   max-width: 100%;
+  width: 100%;
 }
 
 body {
   background: var(--bg-alabaster);
   color: var(--text-dark);
   overflow-x: hidden;
+  overflow-x: clip;
   max-width: 100%;
+  width: 100%;
   position: relative;
   line-height: 1.6;
 }
