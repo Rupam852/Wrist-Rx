@@ -892,7 +892,8 @@ class _SosButton extends ConsumerWidget {
     final user = ref.read(userModelProvider);
     final contacts = user?.settings.emergencyContacts ?? [];
     final savedSosMethod = await StorageService.getSetting<String>('sos_method');
-    final sosMethod = savedSosMethod ?? user?.settings.sosMethod ?? 'auto_sms';
+    final sosMethod = savedSosMethod ?? user?.settings.sosMethod ?? 'manual_sms';
+
     final contactNames = contacts.map((c) => c.name).join(', ');
 
     final phoneNumbers = contacts.map((c) => c.phone).where((p) => p.isNotEmpty).toList();

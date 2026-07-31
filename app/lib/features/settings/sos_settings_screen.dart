@@ -311,16 +311,16 @@ class _SosSettingsScreenState extends ConsumerState<SosSettingsScreen> {
                     style: TextStyle(color: Colors.white70, fontSize: 12)),
                 const SizedBox(height: 14),
 
-                // 1. Automatic Direct SMS
+                // 1. Phone Default Messaging App (Recommended)
                 _DispatchOptionTile(
-                  id: 'auto_sms',
-                  title: 'Automatic Direct SMS (Recommended)',
-                  subtitle: 'Sends SMS directly from your SIM card in background instantly without manual taps.',
-                  badgeText: 'FASTEST & AUTO',
+                  id: 'manual_sms',
+                  title: 'Phone Default Messaging App (Recommended)',
+                  subtitle: 'Opens your default Messages app with all emergency contacts pre-filled in a group draft. You just tap Send!',
+                  badgeText: 'RECOMMENDED',
                   badgeColor: Colors.green,
-                  icon: Icons.flash_on_rounded,
-                  isSelected: currentMethod == 'auto_sms',
-                  onTap: () => _updateSosMethod('auto_sms'),
+                  icon: Icons.message_rounded,
+                  isSelected: currentMethod == 'manual_sms' || currentMethod == 'auto_sms',
+                  onTap: () => _updateSosMethod('manual_sms'),
                 ),
 
                 // 2. WhatsApp Direct Launch
@@ -334,20 +334,9 @@ class _SosSettingsScreenState extends ConsumerState<SosSettingsScreen> {
                   isSelected: currentMethod == 'whatsapp',
                   onTap: () => _updateSosMethod('whatsapp'),
                 ),
-
-                // 3. Interactive SMS App
-                _DispatchOptionTile(
-                  id: 'manual_sms',
-                  title: 'Interactive Messaging App',
-                  subtitle: 'Opens your default phone Messages app with draft message pre-filled.',
-                  badgeText: 'Manual App',
-                  badgeColor: Colors.blue,
-                  icon: Icons.message_rounded,
-                  isSelected: currentMethod == 'manual_sms',
-                  onTap: () => _updateSosMethod('manual_sms'),
-                ),
               ],
             ),
+
           ),
           const SizedBox(height: 24),
 
