@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!--
-    BACKGROUND — Dark/Night Mode
-    Deep dark — auto used when phone theme is dark
--->
-<shape xmlns:android="http://schemas.android.com/apk/res/android"
-    android:shape="rectangle">
-    <solid android:color="#0F1923"/>
-</shape>
