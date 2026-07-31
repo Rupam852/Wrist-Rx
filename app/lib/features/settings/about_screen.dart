@@ -365,23 +365,20 @@ class _ContributorCard extends StatelessWidget {
             ),
           ),
 
-          // Right-aligned sleek Instagram Icon Button
+          // Right-aligned circular dark Instagram Icon Button
           InkWell(
             onTap: onTapInstagram,
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(22),
             child: Container(
-              width: 38,
-              height: 38,
+              width: 42,
+              height: 42,
               decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF833AB4), Color(0xFFFD1D1D), Color(0xFFF77737)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(11),
+                shape: BoxShape.circle,
+                color: const Color(0xFF283244),
+                border: Border.all(color: Colors.white.withOpacity(0.15), width: 1.5),
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFFFD1D1D).withOpacity(0.35),
+                    color: Colors.black.withOpacity(0.3),
                     blurRadius: 8,
                     offset: const Offset(0, 2),
                   ),
@@ -392,6 +389,7 @@ class _ContributorCard extends StatelessWidget {
               ),
             ),
           ),
+
         ],
       ),
     );
