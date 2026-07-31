@@ -147,6 +147,9 @@ body {
   transition: all 0.3s ease;
   transform: translateZ(0);
   will-change: transform, padding, background;
+  width: 100%;
+  left: 0;
+  right: 0;
 }
 
 .navbar.scrolled {
@@ -252,28 +255,82 @@ body {
   transform: translateY(-7px) rotate(-45deg);
 }
 
-/* ── Mobile Menu Drawer ──────────────────────────────────────────── */
+/* ── Mobile Menu (inside navbar, expands downward) ───────────────── */
 .mobile-menu {
-  display: none;
-  position: fixed;
-  top: 58px;
-  left: 0;
-  right: 0;
-  z-index: 99;
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.35s cubic-bezier(0.16, 1, 0.3, 1);
   background: rgba(248, 250, 249, 0.98);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border-bottom: 1px solid rgba(5, 150, 105, 0.12);
-  box-shadow: 0 12px 40px rgba(5, 150, 105, 0.1);
-  animation: menuSlideIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-@keyframes menuSlideIn {
-  from { opacity: 0; transform: translateY(-8px); }
-  to   { opacity: 1; transform: translateY(0); }
+  border-top: 0px solid transparent;
+  transition: max-height 0.35s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s ease;
 }
 
 .mobile-menu.open {
+  max-height: 600px;
+  border-top: 1px solid rgba(5, 150, 105, 0.1);
+}
+
+.mobile-menu-inner {
+  display: flex;
+  flex-direction: column;
+  padding: 8px 16px 16px;
+  gap: 2px;
+}
+
+.mobile-menu-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 13px 14px;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-dark);
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 0.18s ease, color 0.18s ease;
+  background: transparent;
+  border: none;
+}
+
+.mobile-menu-link:hover,
+.mobile-menu-link:active {
+  background: rgba(0, 200, 83, 0.08);
+  color: var(--primary-dark);
+}
+
+.mobile-menu-icon {
+  font-size: 18px;
+  width: 26px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.mobile-download-btn {
+  margin-top: 6px;
+  background: linear-gradient(135deg, #00C853 0%, #10B981 100%);
+  color: #FFFFFF !important;
+  justify-content: center;
+  border-radius: 14px;
+  font-weight: 800;
+  box-shadow: 0 6px 18px rgba(0, 200, 83, 0.3);
+}
+
+.mobile-download-btn:hover {
+  background: linear-gradient(135deg, #00E676 0%, #00C853 100%);
+  transform: none;
+}
+
+/* ── Mobile Menu Backdrop ────────────────────────────────────────── */
+.mobile-menu-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 97;
+  background: rgba(15, 23, 42, 0.2);
+}
+
+.mobile-menu-backdrop.open {
   display: block;
 }
 
@@ -1103,9 +1160,9 @@ body {
   .mockup-wrapper { width: 100%; }
   .mockup-card { padding: 20px 16px; border-radius: 24px; grid-template-columns: 1fr; width: 100%; }
 
-  /* Hamburger menu: hide desktop nav, show mobile controls */
+  /* Hamburger: hide desktop nav, show ☰ button */
   .nav-links { display: none !important; }
-  .nav-right .btn-primary { display: none !important; }
+  .nav-download-btn { display: none !important; }
   .hamburger { display: flex !important; }
 }
 
