@@ -231,7 +231,7 @@ class AboutScreen extends StatelessWidget {
                     border: Border.all(color: AppColors.primary.withOpacity(0.3)),
                   ),
                   child: const Text(
-                    'Version 1.0.0+1',
+                    'Version 1.0.1',
                     style: TextStyle(
                       color: AppColors.primary,
                       fontSize: 12,
@@ -251,7 +251,81 @@ class AboutScreen extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(height: 32),
+          const SizedBox(height: 28),
+
+          // ── Official Website Section ────────────────────────────────
+          _SectionTitle(title: 'Official Website'),
+          const SizedBox(height: 10),
+          Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  AppColors.cardDark,
+                  AppColors.cardDark.withOpacity(0.85),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: AppColors.primary.withOpacity(0.25)),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.primary.withOpacity(0.12),
+                  blurRadius: 14,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () => _launchUrl('https://wrist-rx.vercel.app/'),
+                borderRadius: BorderRadius.circular(18),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withOpacity(0.15),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.language_rounded, color: AppColors.primary, size: 24),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Wrist Rx Official Landing Page',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 15,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              'wrist-rx.vercel.app',
+                              style: TextStyle(
+                                color: AppColors.primary.withOpacity(0.9),
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Icon(Icons.open_in_new_rounded, color: Colors.white54, size: 20),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ).animate().fadeIn(delay: 280.ms),
+          const SizedBox(height: 28),
 
           // ── Contributors Section ──────────────────────────────────
           _SectionTitle(title: 'Contributors'),
