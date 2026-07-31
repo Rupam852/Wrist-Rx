@@ -41,10 +41,16 @@
   height: 0;
 }
 
+html {
+  overflow-x: hidden;
+  max-width: 100%;
+}
+
 body {
   background: var(--bg-alabaster);
   color: var(--text-dark);
   overflow-x: hidden;
+  max-width: 100%;
   position: relative;
   line-height: 1.6;
 }
@@ -86,27 +92,33 @@ body {
 }
 
 .glow-1 {
-  top: -100px;
-  left: 15%;
-  width: 500px;
-  height: 500px;
+  top: -60px;
+  left: 5%;
+  width: 40vw;
+  max-width: 420px;
+  height: 40vw;
+  max-height: 420px;
   background: rgba(16, 185, 129, 0.1);
 }
 
 .glow-2 {
   top: 30%;
-  right: -100px;
-  width: 550px;
-  height: 550px;
-  background: rgba(0, 200, 83, 0.1);
+  right: 0;
+  width: 40vw;
+  max-width: 450px;
+  height: 40vw;
+  max-height: 450px;
+  background: rgba(0, 200, 83, 0.08);
 }
 
 .glow-3 {
   bottom: 5%;
-  left: -80px;
-  width: 500px;
-  height: 500px;
-  background: rgba(5, 150, 105, 0.06);
+  left: 0;
+  width: 40vw;
+  max-width: 420px;
+  height: 40vw;
+  max-height: 420px;
+  background: rgba(5, 150, 105, 0.05);
 }
 
 /* ── Container Layout ─────────────────────────────────────────────── */
