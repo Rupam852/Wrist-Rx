@@ -30,6 +30,29 @@
   box-sizing: border-box;
   font-family: 'Outfit', sans-serif;
   scroll-behavior: smooth;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(5, 150, 105, 0.4) transparent;
+}
+
+/* ── Custom Sleek Scrollbar ───────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(248, 250, 249, 0.6);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(5, 150, 105, 0.4);
+  border-radius: 10px;
+  border: 2px solid rgba(248, 250, 249, 0.8);
+  transition: all 0.3s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 200, 83, 0.8);
 }
 
 body {
