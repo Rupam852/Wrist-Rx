@@ -17,28 +17,24 @@ function scrollToSection(sectionId) {
 // ── Hamburger Mobile Menu ─────────────────────────────────────────
 function toggleMobileMenu() {
   const menu = document.getElementById('mobile-menu');
-  const backdrop = document.getElementById('mobile-backdrop');
   const btn = document.getElementById('hamburger-btn');
-  const isOpen = menu.classList.contains('open');
+  if (!menu) return;
 
+  const isOpen = menu.classList.contains('open');
   if (isOpen) {
     closeMobileMenu();
   } else {
     menu.classList.add('open');
-    backdrop.classList.add('open');
-    btn.classList.add('open');
-    document.body.style.overflow = 'hidden';
+    btn && btn.classList.add('open');
   }
 }
 
 function closeMobileMenu() {
   const menu = document.getElementById('mobile-menu');
-  const backdrop = document.getElementById('mobile-backdrop');
   const btn = document.getElementById('hamburger-btn');
+  if (!menu) return;
   menu.classList.remove('open');
-  backdrop.classList.remove('open');
-  btn.classList.remove('open');
-  document.body.style.overflow = '';
+  btn && btn.classList.remove('open');
 }
 
 // Sticky Navbar Scroll Effect
