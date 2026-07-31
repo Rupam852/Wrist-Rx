@@ -8,6 +8,8 @@ import '../../core/constants/api_constants.dart';
 import '../home/health_provider.dart';
 import '../auth/auth_provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'watch_protocol_registry.dart';
+
 
 
 final watchProvider = StateNotifierProvider<WatchNotifier, WatchState>((ref) {
