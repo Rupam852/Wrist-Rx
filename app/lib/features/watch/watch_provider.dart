@@ -252,24 +252,25 @@ class WatchNotifier extends StateNotifier<WatchState> {
     _pingCycle++;
 
     for (final char in _writeCharacteristics) {
-      // Always send Battery Probe in every sync cycle so battery & charging updates real-time!
+      // Always send Battery & Step Probes in every sync cycle so steps and battery update in 100% real-time!
       await _sendBleCommand(char, [0xAB, 0x00, 0x04, 0xFF, 0x91]);
       await _sendBleCommand(char, [0xAB, 0x91]);
       await _sendBleCommand(char, [0xAA, 0x91]);
       await _sendBleCommand(char, [0x04, 0x02]);
 
+      // Always send Live Step Probes
+      await _sendBleCommand(char, [0xAB, 0x00, 0x04, 0xFF, 0x51]);
+      await _sendBleCommand(char, [0xAB, 0x51]);
+      await _sendBleCommand(char, [0x55, 0x51]);
+      await _sendBleCommand(char, [0xAB, 0x31]);
+      await _sendBleCommand(char, [0xAA, 0x01]);
+
       if (cycle == 0) {
         // Step probe cycle A (FitPro / DaFit / Chinese OEM)
-        await _sendBleCommand(char, [0xAB, 0x00, 0x04, 0xFF, 0x51]);
-        await _sendBleCommand(char, [0xAB, 0x51]);
-        await _sendBleCommand(char, [0x55, 0x51]);
-        await _sendBleCommand(char, [0xAA, 0x01]);
-      } else if (cycle == 1) {
-        // Step probe cycle B (VeryFit / JYou / FastRun / GATT)
-        await _sendBleCommand(char, [0xAB, 0x00, 0x04, 0xFF, 0x31]);
-        await _sendBleCommand(char, [0xAB, 0x31]);
         await _sendBleCommand(char, [0x55, 0x01]);
         await _sendBleCommand(char, [0x55, 0x02]);
+      } else if (cycle == 1) {
+        // Step probe cycle B (VeryFit / JYou / FastRun / GATT)
         await _sendBleCommand(char, [0xEA, 0x01]);
       } else {
         // HR & SpO2 probe cycle
@@ -281,6 +282,7 @@ class WatchNotifier extends StateNotifier<WatchState> {
       }
     }
   }
+
 
 
   Future<bool> connectViaToken(String token) async {
@@ -473,30 +475,28 @@ class WatchNotifier extends StateNotifier<WatchState> {
     final bool isStepCmd = (effectiveCmd == 0x02 || effectiveCmd == 0x07 ||
                       effectiveCmd == 0x31 || effectiveCmd == 0x51 ||
                       effectiveCmd == 0x01 || effectiveCmd == 0x08 ||
-                      effectiveCmd == 0x0B || effectiveCmd == 0x1E);
+                      effectiveCmd == 0x0B || effectiveCmd == 0x1E ||
+                      effectiveCmd == 0x53 || effectiveCmd == 0x20 ||
+                      effectiveCmd == 0x12 || effectiveCmd == 0x1C);
 
     if (isStepCmd) {
       int extractedSteps = 0;
 
-      // Primary check at dataStart (where step count integer resides)
-      if (dataStart + 2 <= bytes.length) {
-        int s2le = bytes[dataStart] | (bytes[dataStart + 1] << 8);
-        if (s2le > 0 && s2le < 200000) {
-          extractedSteps = s2le;
+      // Scan full byte array for 2-byte integers (Little Endian)
+      for (int i = dataStart; i <= bytes.length - 2; i++) {
+        int val = bytes[i] | (bytes[i + 1] << 8);
+        if (val > extractedSteps && val < 200000) {
+          extractedSteps = val;
         }
       }
 
-      if (extractedSteps == 0 && dataStart + 4 <= bytes.length) {
-        int s4le = bytes[dataStart] | (bytes[dataStart + 1] << 8) | (bytes[dataStart + 2] << 16) | (bytes[dataStart + 3] << 24);
-        if (s4le > 0 && s4le < 200000) {
-          extractedSteps = s4le;
-        }
-      }
-
-      if (extractedSteps == 0 && dataStart + 2 <= bytes.length) {
-        int s2be = (bytes[dataStart] << 8) | bytes[dataStart + 1];
-        if (s2be > 0 && s2be < 200000) {
-          extractedSteps = s2be;
+      // Scan full byte array for 4-byte integers (Little Endian)
+      if (bytes.length >= dataStart + 4) {
+        for (int i = dataStart; i <= bytes.length - 4; i++) {
+          int val = bytes[i] | (bytes[i + 1] << 8) | (bytes[i + 2] << 16) | (bytes[i + 3] << 24);
+          if (val > extractedSteps && val < 200000) {
+            extractedSteps = val;
+          }
         }
       }
 
@@ -507,6 +507,7 @@ class WatchNotifier extends StateNotifier<WatchState> {
       }
       return;
     }
+
   }
 
 
