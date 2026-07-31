@@ -500,43 +500,29 @@ class WatchNotifier extends StateNotifier<WatchState> {
       return;
     }
 
-    // ── Vendor Pedometer/Steps Response ────────────────────────────────────
-    // Command codes: 0x02, 0x07, 0x31, 0x51, 0x01, 0x08, 0x0B, 0x1E
-    final bool isStepCmd = (effectiveCmd == 0x02 || effectiveCmd == 0x07 ||
-                      effectiveCmd == 0x31 || effectiveCmd == 0x51 ||
-                      effectiveCmd == 0x01 || effectiveCmd == 0x08 ||
-                      effectiveCmd == 0x0B || effectiveCmd == 0x1E ||
-                      effectiveCmd == 0x53 || effectiveCmd == 0x20 ||
-                      effectiveCmd == 0x12 || effectiveCmd == 0x1C);
-
-    if (isStepCmd) {
-      int extractedSteps = 0;
-
-      // Scan full byte array for 2-byte integers (Little Endian)
-      for (int i = dataStart; i <= bytes.length - 2; i++) {
-        int val = bytes[i] | (bytes[i + 1] << 8);
-        if (val > extractedSteps && val < 200000) {
+    // ── Universal Pedometer Payload Scanner ─────────────────────────────────
+    // Scans full byte array for 2-byte and 4-byte step integers (Little Endian)
+    int extractedSteps = 0;
+    for (int i = 0; i <= bytes.length - 2; i++) {
+      int val = bytes[i] | (bytes[i + 1] << 8);
+      if (val > extractedSteps && val < 200000 && val >= 1) {
+        extractedSteps = val;
+      }
+    }
+    if (bytes.length >= 4) {
+      for (int i = 0; i <= bytes.length - 4; i++) {
+        int val = bytes[i] | (bytes[i + 1] << 8) | (bytes[i + 2] << 16) | (bytes[i + 3] << 24);
+        if (val > extractedSteps && val < 200000 && val >= 1) {
           extractedSteps = val;
         }
       }
-
-      // Scan full byte array for 4-byte integers (Little Endian)
-      if (bytes.length >= dataStart + 4) {
-        for (int i = dataStart; i <= bytes.length - 4; i++) {
-          int val = bytes[i] | (bytes[i + 1] << 8) | (bytes[i + 2] << 16) | (bytes[i + 3] << 24);
-          if (val > extractedSteps && val < 200000) {
-            extractedSteps = val;
-          }
-        }
-      }
-
-      if (extractedSteps > 0) {
-        ref.read(stepsSupportedProvider.notifier).state = true;
-        _saveAndPush({'steps': extractedSteps});
-        return;
-      }
-      return;
     }
+
+    if (extractedSteps > 0) {
+      ref.read(stepsSupportedProvider.notifier).state = true;
+      _saveAndPush({'steps': extractedSteps});
+     }
+
 
   }
 

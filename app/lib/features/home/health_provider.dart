@@ -41,13 +41,13 @@ class HealthNotifier extends StateNotifier<HealthReading> {
     // 1. Load latest stored data first (local device storage)
     fetchLatestDataFromBackend();
 
-    // 2. Start hardware pedometer step counter sensor as live fallback ONLY when watch is disconnected
+    // 2. Start pedometer step counter sensor for hybrid step tracking while walking
     _pedometer.init(onStepCount: (steps) {
-      final isWatchConnected = _ref.read(watchConnectedProvider);
-      if (!isWatchConnected) {
+      if (steps > 0) {
         updateFromWatch({'steps': steps});
       }
     });
+
 
     // 3. Connect WebSocket for live push ONLY if user enabled cloud sync
     final user = _ref.read(userModelProvider);
@@ -107,12 +107,16 @@ class HealthNotifier extends StateNotifier<HealthReading> {
     
     int validSteps = state.steps;
     if (st != null) {
-      final int rawWatchSteps = (st as num).toInt();
-      if (rawWatchSteps > 0) {
-        validSteps = rawWatchSteps;
-        _baseSteps = rawWatchSteps;
+      final int rawSteps = (st as num).toInt();
+      if (rawSteps > 0) {
+        if (rawSteps > validSteps) {
+          validSteps = rawSteps;
+        } else if (rawSteps + _baseSteps > validSteps) {
+          validSteps = rawSteps + _baseSteps;
+        }
       }
     }
+
 
     final double? validLat = (lat != null) ? (lat as num).toDouble() : state.lat;
     final double? validLng = (lng != null) ? (lng as num).toDouble() : state.lng;
