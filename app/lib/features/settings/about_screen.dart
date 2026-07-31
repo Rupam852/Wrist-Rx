@@ -308,7 +308,7 @@ class _ContributorCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
         color: AppColors.cardDark,
         borderRadius: BorderRadius.circular(16),
@@ -325,12 +325,12 @@ class _ContributorCard extends StatelessWidget {
             child: ClipOval(
               child: Image.asset(
                 info.imagePath,
-                width: 52,
-                height: 52,
+                width: 48,
+                height: 48,
                 fit: BoxFit.cover,
                 errorBuilder: (_, __, ___) => Container(
-                  width: 52,
-                  height: 52,
+                  width: 48,
+                  height: 48,
                   color: Colors.white10,
                   child: const Icon(Icons.person_rounded, color: Colors.white54),
                 ),
@@ -339,10 +339,11 @@ class _ContributorCard extends StatelessWidget {
           ),
           const SizedBox(width: 14),
 
-          // Name, Role & Instagram Contact Button
+          // Name & Role
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
                   info.name,
@@ -357,41 +358,38 @@ class _ContributorCard extends StatelessWidget {
                   info.role,
                   style: TextStyle(
                     color: AppColors.onSurfaceDark,
-                    fontSize: 11,
-                  ),
-                ),
-                const SizedBox(height: 6),
-
-                // Instagram Profile Link Button
-                InkWell(
-                  onTap: onTapInstagram,
-                  borderRadius: BorderRadius.circular(20),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF833AB4), Color(0xFFFD1D1D), Color(0xFFF77737)],
-                      ),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: const Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.camera_alt_rounded, color: Colors.white, size: 12),
-                        SizedBox(width: 5),
-                        Text(
-                          'Contact on Instagram',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ],
-                    ),
+                    fontSize: 12,
                   ),
                 ),
               ],
+            ),
+          ),
+
+          // Right-aligned sleek Instagram Icon Button
+          InkWell(
+            onTap: onTapInstagram,
+            borderRadius: BorderRadius.circular(12),
+            child: Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF833AB4), Color(0xFFFD1D1D), Color(0xFFF77737)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(11),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFFFD1D1D).withOpacity(0.35),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: const Center(
+                child: _InstagramLogoIcon(size: 20),
+              ),
             ),
           ),
         ],
@@ -399,6 +397,55 @@ class _ContributorCard extends StatelessWidget {
     );
   }
 }
+
+class _InstagramLogoIcon extends StatelessWidget {
+  final double size;
+  const _InstagramLogoIcon({this.size = 20});
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomPaint(
+      size: Size(size, size),
+      painter: _InstagramPainter(),
+    );
+  }
+}
+
+class _InstagramPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = size.width * 0.11
+      ..strokeCap = StrokeCap.round;
+
+    final rrect = RRect.fromRectAndRadius(
+      Rect.fromLTWH(size.width * 0.05, size.height * 0.05, size.width * 0.9, size.height * 0.9),
+      Radius.circular(size.width * 0.28),
+    );
+    canvas.drawRRect(rrect, paint);
+
+    canvas.drawCircle(
+      Offset(size.width * 0.5, size.height * 0.5),
+      size.width * 0.22,
+      paint,
+    );
+
+    final dotPaint = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.fill;
+    canvas.drawCircle(
+      Offset(size.width * 0.72, size.height * 0.28),
+      size.width * 0.07,
+      dotPaint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
 
 class _SectionTitle extends StatelessWidget {
   final String title;
