@@ -4,8 +4,55 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../core/theme/app_colors.dart';
 
+class ContributorInfo {
+  final String name;
+  final String role;
+  final String imagePath;
+  final String instagramUrl;
+
+  const ContributorInfo({
+    required this.name,
+    required this.role,
+    required this.imagePath,
+    required this.instagramUrl,
+  });
+}
+
 class AboutScreen extends StatelessWidget {
   const AboutScreen({super.key});
+
+  static const List<ContributorInfo> _contributors = [
+    ContributorInfo(
+      name: 'Agnik Banerjee',
+      role: 'Project Contributor',
+      imagePath: 'assets/images/contributors/agnik.jpg',
+      instagramUrl: 'https://www.instagram.com/agnik._.banerjee?igsh=dzNxczk5dTdlZHJl',
+    ),
+    ContributorInfo(
+      name: 'Sk Soyel',
+      role: 'Project Contributor',
+      imagePath: 'assets/images/contributors/soyel.jpg',
+      instagramUrl: 'https://www.instagram.com/soyel__27?igsh=OHdzaWJwZXFzNHN3',
+    ),
+    ContributorInfo(
+      name: 'Sanjana Singha',
+      role: 'Project Contributor',
+      imagePath: 'assets/images/contributors/sanjana.jpg',
+      instagramUrl: 'https://www.instagram.com/sanjana_singh_2406?igsh=YWVyZHYyeDBiN2lj',
+    ),
+    ContributorInfo(
+      name: 'Shreyansh Roy',
+      role: 'Project Contributor',
+      imagePath: 'assets/images/contributors/shreyansh.jpg',
+      instagramUrl: 'https://www.instagram.com/shreyansh.raw?igsh=dGlpczliM3l1aHcw',
+    ),
+    ContributorInfo(
+      name: 'Suchandra Jana',
+      role: 'Project Contributor',
+      imagePath: 'assets/images/contributors/suchandra.jpg',
+      instagramUrl: 'https://www.instagram.com/suchandra______?igsh=MWd2ZTR6cHU4YzBlZA==',
+    ),
+  ];
 
   Future<void> _launchUrl(String urlString) async {
     final Uri uri = Uri.parse(urlString);
@@ -98,43 +145,10 @@ class AboutScreen extends StatelessWidget {
           // ── Contributors Section ──────────────────────────────────
           _SectionTitle(title: 'Contributors'),
           const SizedBox(height: 10),
-          Container(
-            padding: const EdgeInsets.all(18),
-            decoration: BoxDecoration(
-              color: AppColors.cardDark,
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: Colors.white.withOpacity(0.07)),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: Colors.amber.withOpacity(0.12),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(Icons.group_outlined, color: Colors.amber, size: 24),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Project Contributors',
-                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        'No external contributors added yet. Open for community contributions!',
-                        style: TextStyle(color: AppColors.onSurfaceDark, fontSize: 12, height: 1.3),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ).animate().fadeIn(delay: 300.ms),
+          ..._contributors.map((c) => _ContributorCard(
+            info: c,
+            onTapInstagram: () => _launchUrl(c.instagramUrl),
+          )).toList().animate().fadeIn(delay: 300.ms),
           const SizedBox(height: 28),
 
           // ── Developer Section ──────────────────────────────────────
@@ -225,43 +239,133 @@ class AboutScreen extends StatelessWidget {
                     ),
                   ],
                 ),
-                const SizedBox(height: 18),
-                const Divider(color: Colors.white10, height: 1),
-                const SizedBox(height: 14),
-                // GitHub Button
+                const SizedBox(height: 16),
+                const Divider(color: Colors.white10),
+                const SizedBox(height: 12),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    _SocialButton(
+                      icon: Icons.code_rounded,
+                      label: 'GitHub',
+                      onTap: () => _launchUrl('https://github.com/Rupam852'),
+                    ),
+                    _SocialButton(
+                      icon: Icons.language_rounded,
+                      label: 'Repository',
+                      onTap: () => _launchUrl('https://github.com/Rupam852/Wrist-Rx'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ).animate().fadeIn(delay: 350.ms),
+          const SizedBox(height: 40),
+        ],
+      ),
+    );
+  }
+}
+
+class _ContributorCard extends StatelessWidget {
+  final ContributorInfo info;
+  final VoidCallback onTapInstagram;
+
+  const _ContributorCard({
+    required this.info,
+    required this.onTapInstagram,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.cardDark,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withOpacity(0.07)),
+      ),
+      child: Row(
+        children: [
+          // Round Profile Photo
+          Container(
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(color: AppColors.primary.withOpacity(0.4), width: 2),
+            ),
+            child: ClipOval(
+              child: Image.asset(
+                info.imagePath,
+                width: 52,
+                height: 52,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => Container(
+                  width: 52,
+                  height: 52,
+                  color: Colors.white10,
+                  child: const Icon(Icons.person_rounded, color: Colors.white54),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 14),
+
+          // Name, Role & Instagram Contact Button
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  info.name,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 15,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  info.role,
+                  style: TextStyle(
+                    color: AppColors.onSurfaceDark,
+                    fontSize: 11,
+                  ),
+                ),
+                const SizedBox(height: 6),
+
+                // Instagram Profile Link Button
                 InkWell(
-                  onTap: () => _launchUrl('https://github.com/Rupam852'),
-                  borderRadius: BorderRadius.circular(14),
+                  onTap: onTapInstagram,
+                  borderRadius: BorderRadius.circular(20),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.06),
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: Colors.white.withOpacity(0.12)),
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF833AB4), Color(0xFFFD1D1D), Color(0xFFF77737)],
+                      ),
+                      borderRadius: BorderRadius.circular(20),
                     ),
                     child: const Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.code_rounded, color: Colors.white, size: 20),
-                        SizedBox(width: 10),
+                        Icon(Icons.camera_alt_rounded, color: Colors.white, size: 12),
+                        SizedBox(width: 5),
                         Text(
-                          'View GitHub Profile',
+                          'Contact on Instagram',
                           style: TextStyle(
                             color: Colors.white,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
                           ),
                         ),
-                        SizedBox(width: 6),
-                        Icon(Icons.open_in_new_rounded, color: Colors.white54, size: 16),
                       ],
                     ),
                   ),
                 ),
               ],
             ),
-          ).animate().fadeIn(delay: 400.ms),
-          const SizedBox(height: 32),
+          ),
         ],
       ),
     );
@@ -278,55 +382,108 @@ class _SectionTitle extends StatelessWidget {
       title,
       style: const TextStyle(
         color: Colors.white,
-        fontSize: 16,
+        fontSize: 18,
         fontWeight: FontWeight.w700,
+        letterSpacing: 0.3,
       ),
     );
   }
 }
 
-// Custom Painter for App Logo rendering in About Screen Header
+class _SocialButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  const _SocialButton({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.06),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.white10),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, color: AppColors.primary, size: 18),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+                fontSize: 13,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _LogoPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
-    final strokePaint = Paint()
-      ..color = const Color(0xFF1A1A2E)
+    final strokeWidth = size.width * 0.08;
+
+    final heartPath = Path();
+    heartPath.moveTo(size.width * 0.5, size.height * 0.85);
+    heartPath.cubicTo(
+      size.width * 0.1, size.height * 0.55,
+      size.width * 0.05, size.height * 0.25,
+      size.width * 0.3, size.height * 0.2,
+    );
+    heartPath.cubicTo(
+      size.width * 0.42, size.height * 0.18,
+      size.width * 0.48, size.height * 0.3,
+      size.width * 0.5, size.height * 0.35,
+    );
+    heartPath.cubicTo(
+      size.width * 0.52, size.height * 0.3,
+      size.width * 0.58, size.height * 0.18,
+      size.width * 0.7, size.height * 0.2,
+    );
+    heartPath.cubicTo(
+      size.width * 0.95, size.height * 0.25,
+      size.width * 0.9, size.height * 0.55,
+      size.width * 0.5, size.height * 0.85,
+    );
+    heartPath.close();
+
+    final fillPaint = Paint()
+      ..color = const Color(0xFF00C853)
+      ..style = PaintingStyle.fill;
+    canvas.drawPath(heartPath, fillPaint);
+
+    final ecgPath = Path();
+    ecgPath.moveTo(size.width * 0.12, size.height * 0.52);
+    ecgPath.lineTo(size.width * 0.32, size.height * 0.52);
+    ecgPath.lineTo(size.width * 0.40, size.height * 0.26);
+    ecgPath.lineTo(size.width * 0.48, size.height * 0.74);
+    ecgPath.lineTo(size.width * 0.56, size.height * 0.38);
+    ecgPath.lineTo(size.width * 0.62, size.height * 0.56);
+    ecgPath.lineTo(size.width * 0.68, size.height * 0.52);
+    ecgPath.lineTo(size.width * 0.88, size.height * 0.52);
+
+    final ecgPaint = Paint()
+      ..color = const Color(0xFFFFFFFF)
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 3.5
+      ..strokeWidth = strokeWidth
       ..strokeCap = StrokeCap.round
       ..strokeJoin = StrokeJoin.round;
 
-    // ECG Pulse
-    final path = Path()
-      ..moveTo(size.width * 0.1, size.height * 0.4)
-      ..lineTo(size.width * 0.28, size.height * 0.4)
-      ..lineTo(size.width * 0.38, size.height * 0.22)
-      ..lineTo(size.width * 0.48, size.height * 0.62)
-      ..lineTo(size.width * 0.58, size.height * 0.4)
-      ..lineTo(size.width * 0.9, size.height * 0.4);
-
-    canvas.drawPath(path, strokePaint);
-
-    // Rx Symbol
-    final rxPaint = Paint()
-      ..color = const Color(0xFF1A1A2E)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 3.0
-      ..strokeCap = StrokeCap.round;
-
-    // R
-    canvas.drawLine(Offset(size.width * 0.3, size.height * 0.6), Offset(size.width * 0.3, size.height * 0.82), rxPaint);
-    final rArch = Path()
-      ..moveTo(size.width * 0.3, size.height * 0.6)
-      ..lineTo(size.width * 0.42, size.height * 0.6)
-      ..quadraticBezierTo(size.width * 0.48, size.height * 0.65, size.width * 0.42, size.height * 0.71)
-      ..lineTo(size.width * 0.3, size.height * 0.71);
-    canvas.drawPath(rArch, rxPaint);
-    canvas.drawLine(Offset(size.width * 0.38, size.height * 0.71), Offset(size.width * 0.46, size.height * 0.82), rxPaint);
-
-    // x
-    canvas.drawLine(Offset(size.width * 0.55, size.height * 0.62), Offset(size.width * 0.68, size.height * 0.81), rxPaint);
-    canvas.drawLine(Offset(size.width * 0.68, size.height * 0.62), Offset(size.width * 0.55, size.height * 0.81), rxPaint);
+    canvas.drawPath(ecgPath, ecgPaint);
   }
 
   @override
