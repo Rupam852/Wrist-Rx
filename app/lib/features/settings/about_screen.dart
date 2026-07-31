@@ -180,27 +180,39 @@ class AboutScreen extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    // GitHub Avatar fetched live
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(16),
-                      child: CachedNetworkImage(
-                        imageUrl: 'https://github.com/Rupam852.png',
-                        width: 64,
-                        height: 64,
-                        fit: BoxFit.cover,
-                        placeholder: (context, url) => Container(
-                          color: Colors.white10,
-                          child: const Center(
-                            child: SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
+                    // Round Circular Profile Photo with Accent Border & Glow
+                    Container(
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(color: AppColors.primary, width: 2.5),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.primary.withOpacity(0.3),
+                            blurRadius: 12,
+                            spreadRadius: 2,
+                          ),
+                        ],
+                      ),
+                      child: ClipOval(
+                        child: CachedNetworkImage(
+                          imageUrl: 'https://github.com/Rupam852.png',
+                          width: 66,
+                          height: 66,
+                          fit: BoxFit.cover,
+                          placeholder: (context, url) => Container(
+                            color: Colors.white10,
+                            child: const Center(
+                              child: SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
+                              ),
                             ),
                           ),
-                        ),
-                        errorWidget: (context, url, error) => Container(
-                          color: AppColors.primary.withOpacity(0.2),
-                          child: const Icon(Icons.person_rounded, color: AppColors.primary, size: 32),
+                          errorWidget: (context, url, error) => Container(
+                            color: AppColors.primary.withOpacity(0.2),
+                            child: const Icon(Icons.person_rounded, color: AppColors.primary, size: 36),
+                          ),
                         ),
                       ),
                     ),
@@ -210,11 +222,11 @@ class AboutScreen extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           const Text(
-                            'Rupam',
+                            'Rupam Bairagya',
                             style: TextStyle(
                               color: Colors.white,
                               fontSize: 18,
-                              fontWeight: FontWeight.w700,
+                              fontWeight: FontWeight.w800,
                             ),
                           ),
                           const SizedBox(height: 2),
@@ -243,17 +255,33 @@ class AboutScreen extends StatelessWidget {
                 const Divider(color: Colors.white10),
                 const SizedBox(height: 12),
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    _SocialButton(
-                      icon: Icons.code_rounded,
-                      label: 'GitHub',
-                      onTap: () => _launchUrl('https://github.com/Rupam852'),
+                    Expanded(
+                      child: _SocialButton(
+                        icon: Icons.camera_alt_rounded,
+                        label: 'Instagram',
+                        gradientColors: const [Color(0xFF833AB4), Color(0xFFFD1D1D), Color(0xFFF77737)],
+                        onTap: () => _launchUrl('https://www.instagram.com/_rupambairagya_?igsh=MWNsNHFiZzE4bnQ5OQ=='),
+                      ),
                     ),
-                    _SocialButton(
-                      icon: Icons.language_rounded,
-                      label: 'Repository',
-                      onTap: () => _launchUrl('https://github.com/Rupam852/Wrist-Rx'),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _SocialButton(
+                        icon: Icons.link_rounded,
+                        label: 'LinkFlow',
+                        gradientColors: const [Color(0xFF0072FF), Color(0xFF00C6FF)],
+                        onTap: () => _launchUrl('https://link-flow-program.vercel.app/rupam-bairagya'),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _SocialButton(
+                        icon: Icons.code_rounded,
+                        label: 'GitHub',
+                        gradientColors: const [Color(0xFF24292E), Color(0xFF404448)],
+                        onTap: () => _launchUrl('https://github.com/Rupam852'),
+                      ),
                     ),
                   ],
                 ),
@@ -393,11 +421,13 @@ class _SectionTitle extends StatelessWidget {
 class _SocialButton extends StatelessWidget {
   final IconData icon;
   final String label;
+  final List<Color>? gradientColors;
   final VoidCallback onTap;
 
   const _SocialButton({
     required this.icon,
     required this.label,
+    this.gradientColors,
     required this.onTap,
   });
 
@@ -407,22 +437,29 @@ class _SocialButton extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        padding: const EdgeInsets.symmetric(vertical: 9, horizontal: 4),
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.06),
+          gradient: gradientColors != null
+              ? LinearGradient(colors: gradientColors!)
+              : null,
+          color: gradientColors == null ? Colors.white.withOpacity(0.06) : null,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.white10),
+          border: Border.all(color: Colors.white.withOpacity(0.15)),
         ),
         child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, color: AppColors.primary, size: 18),
-            const SizedBox(width: 8),
-            Text(
-              label,
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w600,
-                fontSize: 13,
+            Icon(icon, color: Colors.white, size: 14),
+            const SizedBox(width: 5),
+            Flexible(
+              child: Text(
+                label,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 11,
+                ),
               ),
             ),
           ],
