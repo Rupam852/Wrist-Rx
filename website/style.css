@@ -43,44 +43,45 @@
 
 body {
   background: var(--bg-alabaster);
-  background-attachment: fixed;
   color: var(--text-dark);
   overflow-x: hidden;
   position: relative;
   line-height: 1.6;
 }
 
-/* ── Ambient Soft Sage & Emerald Glows ────────────────────────────── */
+/* ── Ambient Soft Sage & Emerald Glows (GPU Accelerated) ───────────── */
 .ambient-glow {
-  position: fixed;
+  position: absolute;
   border-radius: 50%;
-  filter: blur(140px);
+  filter: blur(80px);
   z-index: 0;
   pointer-events: none;
+  transform: translateZ(0);
+  will-change: transform;
 }
 
 .glow-1 {
-  top: -150px;
+  top: -100px;
   left: 15%;
-  width: 550px;
-  height: 550px;
-  background: rgba(16, 185, 129, 0.12);
+  width: 500px;
+  height: 500px;
+  background: rgba(16, 185, 129, 0.1);
 }
 
 .glow-2 {
-  top: 35%;
-  right: -150px;
-  width: 650px;
-  height: 650px;
-  background: rgba(0, 200, 83, 0.14);
+  top: 30%;
+  right: -100px;
+  width: 550px;
+  height: 550px;
+  background: rgba(0, 200, 83, 0.1);
 }
 
 .glow-3 {
   bottom: 5%;
-  left: -100px;
-  width: 550px;
-  height: 550px;
-  background: rgba(5, 150, 105, 0.08);
+  left: -80px;
+  width: 500px;
+  height: 500px;
+  background: rgba(5, 150, 105, 0.06);
 }
 
 /* ── Container Layout ─────────────────────────────────────────────── */
@@ -101,12 +102,14 @@ body {
   z-index: 100;
   padding: 10px 0;
   transition: all 0.3s ease;
+  transform: translateZ(0);
+  will-change: transform, padding, background;
 }
 
 .navbar.scrolled {
-  background: rgba(248, 250, 249, 0.92);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
+  background: rgba(248, 250, 249, 0.94);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   border-bottom: 1px solid rgba(255, 255, 255, 0.9);
   padding: 8px 0;
   box-shadow: 0 8px 24px rgba(5, 150, 105, 0.06), 0 2px 10px rgba(15, 23, 42, 0.03);
