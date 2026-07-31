@@ -96,7 +96,7 @@ class AboutScreen extends StatelessWidget {
           const SizedBox(height: 32),
 
           // ── Contributors Section ──────────────────────────────────
-          _SectionTitle(title: '👥 Contributors'),
+          _SectionTitle(title: 'Contributors'),
           const SizedBox(height: 10),
           Container(
             padding: const EdgeInsets.all(18),
@@ -138,7 +138,8 @@ class AboutScreen extends StatelessWidget {
           const SizedBox(height: 28),
 
           // ── Developer Section ──────────────────────────────────────
-          _SectionTitle(title: '👨‍💻 Developer'),
+          _SectionTitle(title: 'Developer'),
+
           const SizedBox(height: 10),
           Container(
             padding: const EdgeInsets.all(20),

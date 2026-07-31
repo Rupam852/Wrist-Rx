@@ -218,10 +218,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ),
           _SettingsTile(
             title: 'Sync on Cloud',
-            subtitle: 'Backup profile & emergency contacts (Health data remains 100% local on device)',
+            subtitle: 'Backup profile & emergency contact settings securely',
             value: _syncCloudValue ?? settings.syncCloud,
             onChanged: (v) => _updateToggle('syncCloud', v),
           ),
+
 
 
           const SizedBox(height: 24),
