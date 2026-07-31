@@ -27,6 +27,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   bool _isCleaningData = false;
   String _selectedModel = 'auto';
   bool _isLoadingKey = true;
+  bool? _syncCloudValue;
 
   // Only 2 options: Auto (smart fallback) and Custom (user-defined)
   final _models = [
@@ -40,8 +41,18 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   void initState() {
     super.initState();
     _loadKey();
+    _loadSyncCloudSetting();
     final user = ref.read(userModelProvider);
     _selectedModel = user?.settings.aiModel ?? 'auto';
+  }
+
+  Future<void> _loadSyncCloudSetting() async {
+    final val = await StorageService.getSetting<bool>('syncCloud');
+    if (val != null && mounted) {
+      setState(() {
+        _syncCloudValue = val;
+      });
+    }
   }
 
   Future<void> _loadKey() async {
@@ -71,7 +82,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       TopToast.show(
         context,
         title: 'API Key Saved!',
-        message: 'Gemini API Key and model settings saved securely.',
+        message: 'Gemini AI key stored securely on your device.',
         type: TopToastType.success,
       );
     }
@@ -79,24 +90,30 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
   Future<void> _updateToggle(String key, bool value) async {
     HapticService.selectionClick(ref);
-    final user = ref.read(userModelProvider);
-    if (user == null) return;
-    UserSettings newSettings;
-    switch (key) {
-      case 'haptic':
-        newSettings = user.settings.copyWith(haptic: value);
-        // Apply haptic immediately when toggled on
-        if (value) {
-          HapticService.mediumImpact(ref);
-        }
-        break;
-      case 'syncCloud':
-        newSettings = user.settings.copyWith(syncCloud: value);
-        break;
-      default:
-        return;
+
+    if (key == 'syncCloud') {
+      setState(() {
+        _syncCloudValue = value;
+      });
+      await StorageService.saveSetting('syncCloud', value);
     }
-    await ref.read(userModelProvider.notifier).updateSettings(newSettings);
+
+    final user = ref.read(userModelProvider);
+    if (user != null) {
+      UserSettings newSettings;
+      switch (key) {
+        case 'haptic':
+          newSettings = user.settings.copyWith(haptic: value);
+          if (value) HapticService.mediumImpact(ref);
+          break;
+        case 'syncCloud':
+          newSettings = user.settings.copyWith(syncCloud: value);
+          break;
+        default:
+          return;
+      }
+      await ref.read(userModelProvider.notifier).updateSettings(newSettings);
+    }
   }
 
 
@@ -200,11 +217,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             onChanged: (v) => _updateToggle('haptic', v),
           ),
           _SettingsTile(
-            title: 'Sync Settings on Cloud',
+            title: 'Sync on Cloud',
             subtitle: 'Backup profile & emergency contacts (Health data remains 100% local on device)',
-            value: settings.syncCloud,
+            value: _syncCloudValue ?? settings.syncCloud,
             onChanged: (v) => _updateToggle('syncCloud', v),
           ),
+
 
           const SizedBox(height: 24),
 
