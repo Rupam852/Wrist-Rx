@@ -234,7 +234,7 @@ class WatchNotifier extends StateNotifier<WatchState> {
   /// Sends smart sync probes every cycle:
   /// - Cycles through Step, History, HR, and SpO2 probes cleanly with 30ms delay to avoid Android GATT_BUSY drops
   void _triggerWatchSync() async {
-    // 1. Poll readable characteristics continuously for watches that don't auto-notify
+    // 1. Poll readable characteristics continuously for watches that don't auto-notify (e.g. Battery 0x2A19)
     for (final char in _readableCharacteristics) {
       try {
         final val = await char.read();
@@ -250,6 +250,12 @@ class WatchNotifier extends StateNotifier<WatchState> {
     _pingCycle++;
 
     for (final char in _writeCharacteristics) {
+      // Always send Battery Probe in every sync cycle so battery & charging updates real-time!
+      await _sendBleCommand(char, [0xAB, 0x00, 0x04, 0xFF, 0x91]);
+      await _sendBleCommand(char, [0xAB, 0x91]);
+      await _sendBleCommand(char, [0xAA, 0x91]);
+      await _sendBleCommand(char, [0x04, 0x02]);
+
       if (cycle == 0) {
         // Step probe cycle A (FitPro / DaFit / Chinese OEM)
         await _sendBleCommand(char, [0xAB, 0x00, 0x04, 0xFF, 0x51]);
@@ -273,6 +279,7 @@ class WatchNotifier extends StateNotifier<WatchState> {
       }
     }
   }
+
 
   Future<bool> connectViaToken(String token) async {
     state = state.copyWith(status: WatchConnectionStatus.connecting);
@@ -405,7 +412,31 @@ class WatchNotifier extends StateNotifier<WatchState> {
     final effectiveCmd = isLongHeader ? bytes[4] : cmdByte;
     final dataStart = isLongHeader ? 5 : 2;
 
+    // ── Vendor Battery Level & Charging Status Response ─────────────────────
+    // Command codes: 0x91, 0x92, 0x03, 0x1A, 0x90
+    if (effectiveCmd == 0x91 || effectiveCmd == 0x92 || effectiveCmd == 0x03 ||
+        effectiveCmd == 0x1A || effectiveCmd == 0x90) {
+      if (bytes.length >= dataStart + 1) {
+        int batt = bytes[dataStart];
+        if (batt >= 0 && batt <= 100) {
+          ref.read(watchBatteryProvider.notifier).state = batt;
+        }
+        if (bytes.length >= dataStart + 2) {
+          int flag = bytes[dataStart + 1];
+          bool isCharging = (flag & 0x01) != 0 || flag == 1 || flag == 0x80 || flag == 0x02;
+          ref.read(watchIsChargingProvider.notifier).state = isCharging;
+        } else {
+          bool isCharging = bytes.skip(dataStart).any((b) => b == 0x01 || b == 0x80);
+          if (isCharging) {
+            ref.read(watchIsChargingProvider.notifier).state = true;
+          }
+        }
+        return;
+      }
+    }
+
     // ── Vendor Heart Rate Response ──────────────────────────────────────────
+
     // Command codes: 0x0A (HR measurement), 0x09
     // NOTE: 0x51 is NOT here — 0x51 is a STEPS response code (we use it as steps probe)
     if (effectiveCmd == 0x0A || effectiveCmd == 0x09) {
