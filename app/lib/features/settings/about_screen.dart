@@ -63,6 +63,118 @@ class AboutScreen extends StatelessWidget {
     } catch (_) {}
   }
 
+  void _showPhotoPreview({
+    required BuildContext context,
+    required String name,
+    required String role,
+    String? assetPath,
+    String? networkUrl,
+  }) {
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      barrierColor: Colors.black.withOpacity(0.88),
+      builder: (dialogCtx) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Header with Title, Subtitle, and Close Icon
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        name,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        role,
+                        style: const TextStyle(
+                          color: AppColors.primary,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                  GestureDetector(
+                    onTap: () => Navigator.of(dialogCtx).pop(),
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.12),
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white24),
+                      ),
+                      child: const Icon(Icons.close_rounded, color: Colors.white, size: 22),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+
+              // High-Res Image Card Frame
+              Container(
+                constraints: const BoxConstraints(maxHeight: 440),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(color: AppColors.primary.withOpacity(0.4), width: 2),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.primary.withOpacity(0.25),
+                      blurRadius: 20,
+                      spreadRadius: 2,
+                    ),
+                  ],
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(22),
+                  child: assetPath != null
+                      ? Image.asset(
+                          assetPath,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => const SizedBox(
+                            height: 250,
+                            child: Center(
+                              child: Icon(Icons.person_rounded, size: 80, color: Colors.white54),
+                            ),
+                          ),
+                        )
+                      : CachedNetworkImage(
+                          imageUrl: networkUrl ?? '',
+                          fit: BoxFit.cover,
+                          placeholder: (context, url) => const SizedBox(
+                            height: 250,
+                            child: Center(
+                              child: CircularProgressIndicator(color: AppColors.primary),
+                            ),
+                          ),
+                          errorWidget: (context, url, error) => const SizedBox(
+                            height: 250,
+                            child: Center(
+                              child: Icon(Icons.person_rounded, size: 80, color: Colors.white54),
+                            ),
+                          ),
+                        ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -148,6 +260,12 @@ class AboutScreen extends StatelessWidget {
           ..._contributors.map((c) => _ContributorCard(
             info: c,
             onTapInstagram: () => _launchUrl(c.instagramUrl),
+            onTapPhoto: () => _showPhotoPreview(
+              context: context,
+              name: c.name,
+              role: c.role,
+              assetPath: c.imagePath,
+            ),
           )).toList().animate().fadeIn(delay: 300.ms),
           const SizedBox(height: 28),
 
@@ -180,38 +298,46 @@ class AboutScreen extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    // Round Circular Profile Photo with Accent Border & Glow
-                    Container(
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(color: AppColors.primary, width: 2.5),
-                        boxShadow: [
-                          BoxShadow(
-                            color: AppColors.primary.withOpacity(0.3),
-                            blurRadius: 12,
-                            spreadRadius: 2,
-                          ),
-                        ],
+                    // Round Circular Profile Photo with Tap Preview
+                    GestureDetector(
+                      onTap: () => _showPhotoPreview(
+                        context: context,
+                        name: 'Rupam Bairagya',
+                        role: 'Lead Mobile & Backend Developer',
+                        networkUrl: 'https://github.com/Rupam852.png',
                       ),
-                      child: ClipOval(
-                        child: CachedNetworkImage(
-                          imageUrl: 'https://github.com/Rupam852.png',
-                          width: 66,
-                          height: 66,
-                          fit: BoxFit.cover,
-                          placeholder: (context, url) => Container(
-                            color: Colors.white10,
-                            child: const Center(
-                              child: SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(color: AppColors.primary, width: 2.5),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppColors.primary.withOpacity(0.3),
+                              blurRadius: 12,
+                              spreadRadius: 2,
+                            ),
+                          ],
+                        ),
+                        child: ClipOval(
+                          child: CachedNetworkImage(
+                            imageUrl: 'https://github.com/Rupam852.png',
+                            width: 66,
+                            height: 66,
+                            fit: BoxFit.cover,
+                            placeholder: (context, url) => Container(
+                              color: Colors.white10,
+                              child: const Center(
+                                child: SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
+                                ),
                               ),
                             ),
-                          ),
-                          errorWidget: (context, url, error) => Container(
-                            color: AppColors.primary.withOpacity(0.2),
-                            child: const Icon(Icons.person_rounded, color: AppColors.primary, size: 36),
+                            errorWidget: (context, url, error) => Container(
+                              color: AppColors.primary.withOpacity(0.2),
+                              child: const Icon(Icons.person_rounded, color: AppColors.primary, size: 36),
+                            ),
                           ),
                         ),
                       ),
@@ -298,10 +424,12 @@ class AboutScreen extends StatelessWidget {
 class _ContributorCard extends StatelessWidget {
   final ContributorInfo info;
   final VoidCallback onTapInstagram;
+  final VoidCallback onTapPhoto;
 
   const _ContributorCard({
     required this.info,
     required this.onTapInstagram,
+    required this.onTapPhoto,
   });
 
   @override
@@ -316,23 +444,26 @@ class _ContributorCard extends StatelessWidget {
       ),
       child: Row(
         children: [
-          // Round Profile Photo
-          Container(
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(color: AppColors.primary.withOpacity(0.4), width: 2),
-            ),
-            child: ClipOval(
-              child: Image.asset(
-                info.imagePath,
-                width: 48,
-                height: 48,
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => Container(
+          // Round Profile Photo with Tap Preview
+          GestureDetector(
+            onTap: onTapPhoto,
+            child: Container(
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: AppColors.primary.withOpacity(0.4), width: 2),
+              ),
+              child: ClipOval(
+                child: Image.asset(
+                  info.imagePath,
                   width: 48,
                   height: 48,
-                  color: Colors.white10,
-                  child: const Icon(Icons.person_rounded, color: Colors.white54),
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => Container(
+                    width: 48,
+                    height: 48,
+                    color: Colors.white10,
+                    child: const Icon(Icons.person_rounded, color: Colors.white54),
+                  ),
                 ),
               ),
             ),
@@ -389,7 +520,6 @@ class _ContributorCard extends StatelessWidget {
               ),
             ),
           ),
-
         ],
       ),
     );
@@ -443,7 +573,6 @@ class _InstagramPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
-
 
 class _SectionTitle extends StatelessWidget {
   final String title;
