@@ -120,22 +120,24 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
       builder: (dialogCtx) => AlertDialog(
         backgroundColor: AppColors.cardDark,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('About Health AI', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+        title: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text('About Health AI', style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w700)),
+            IconButton(
+              icon: const Icon(Icons.close_rounded, color: Colors.white54, size: 20),
+              onPressed: () => Navigator.of(dialogCtx).pop(),
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(),
+            ),
+          ],
+        ),
         content: const Text(
           'Your AI assistant uses your health data and profile to provide personalized suggestions.\n\nAdd your Gemini API key in Settings → AI Configuration to enable the AI.',
           style: TextStyle(color: Colors.white70, height: 1.4),
         ),
-        actions: [
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            ),
-            onPressed: () => Navigator.of(dialogCtx).pop(),
-            child: const Text('Got it', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
-          ),
-        ],
       ),
+
     );
   }
 }

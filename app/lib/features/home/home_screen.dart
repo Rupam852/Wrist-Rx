@@ -487,11 +487,22 @@ void showLocationShareDialog(BuildContext context, double lat, double lng) {
       builder: (popCtx) => AlertDialog(
         backgroundColor: AppColors.cardDark,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Row(
+        title: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Icon(Icons.location_on_rounded, color: AppColors.primary, size: 26),
-            SizedBox(width: 8),
-            Text('GPS Location Share', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700)),
+            const Row(
+              children: [
+                Icon(Icons.location_on_rounded, color: AppColors.primary, size: 26),
+                SizedBox(width: 8),
+                Text('GPS Location Share', style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w700)),
+              ],
+            ),
+            IconButton(
+              icon: const Icon(Icons.close_rounded, color: Colors.white54, size: 20),
+              onPressed: () => Navigator.of(popCtx).pop(),
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(),
+            ),
           ],
         ),
         content: Column(
@@ -546,26 +557,27 @@ void showLocationShareDialog(BuildContext context, double lat, double lng) {
           ],
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.of(popCtx).pop(),
-            child: const Text('Cancel', style: TextStyle(color: Colors.white54, fontWeight: FontWeight.w600)),
-          ),
-          FilledButton.icon(
-            style: FilledButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              onPressed: () {
+                Navigator.of(popCtx).pop();
+                Share.share('🚨 My Emergency GPS Location: $mapsUrl');
+              },
+              icon: const Icon(Icons.share_rounded, size: 18),
+              label: const Text('Share Location', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
             ),
-            onPressed: () {
-              Navigator.of(popCtx).pop();
-              Share.share('🚨 My Emergency GPS Location: $mapsUrl');
-            },
-            icon: const Icon(Icons.share_rounded, size: 18),
-            label: const Text('Share Location', style: TextStyle(fontWeight: FontWeight.w700)),
           ),
         ],
       ),
     );
   }
+
 
 class _ConnectWatchBanner extends ConsumerWidget {
 

@@ -22,11 +22,22 @@ class WatchDetailsSheet extends ConsumerWidget {
       builder: (dlgCtx) => AlertDialog(
         backgroundColor: AppColors.cardDark,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Row(
+        title: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Icon(Icons.bluetooth_disabled_rounded, color: Colors.redAccent, size: 26),
-            SizedBox(width: 10),
-            Text('Disconnect Watch?', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700)),
+            const Row(
+              children: [
+                Icon(Icons.bluetooth_disabled_rounded, color: Colors.redAccent, size: 26),
+                SizedBox(width: 8),
+                Text('Disconnect Watch?', style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w700)),
+              ],
+            ),
+            IconButton(
+              icon: const Icon(Icons.close_rounded, color: Colors.white54, size: 20),
+              onPressed: () => Navigator.pop(dlgCtx),
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(),
+            ),
           ],
         ),
         content: Text(
@@ -34,21 +45,25 @@ class WatchDetailsSheet extends ConsumerWidget {
           style: const TextStyle(color: Colors.white70, fontSize: 13, height: 1.4),
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dlgCtx),
-            child: const Text('Cancel', style: TextStyle(color: Colors.white54, fontWeight: FontWeight.w600)),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: Colors.redAccent),
-            onPressed: () async {
-              Navigator.pop(dlgCtx); // Close dialog
-              Navigator.pop(context); // Close sheet
-              await ref.read(watchProvider.notifier).disconnect();
-            },
-            child: const Text('Disconnect', style: TextStyle(fontWeight: FontWeight.w700)),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: Colors.redAccent,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              onPressed: () async {
+                Navigator.pop(dlgCtx); // Close dialog
+                Navigator.pop(context); // Close sheet
+                await ref.read(watchProvider.notifier).disconnect();
+              },
+              child: const Text('Disconnect Device', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+            ),
           ),
         ],
       ),
+
     );
   }
 

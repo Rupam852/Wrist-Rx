@@ -152,14 +152,25 @@ class _SosSettingsScreenState extends ConsumerState<SosSettingsScreen> {
     _phoneCtrl.clear();
     showDialog(
       context: context,
-      builder: (_) => AlertDialog(
+      builder: (dlgCtx) => AlertDialog(
         backgroundColor: AppColors.cardDark,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Row(
+        title: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Icon(Icons.person_add_rounded, color: AppColors.sosRed, size: 24),
-            SizedBox(width: 8),
-            Text('Add Emergency Contact', style: TextStyle(color: Colors.white, fontSize: 18)),
+            const Row(
+              children: [
+                Icon(Icons.person_add_rounded, color: AppColors.sosRed, size: 24),
+                SizedBox(width: 8),
+                Text('Add Emergency Contact', style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w700)),
+              ],
+            ),
+            IconButton(
+              icon: const Icon(Icons.close_rounded, color: Colors.white54, size: 20),
+              onPressed: () => Navigator.pop(dlgCtx),
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(),
+            ),
           ],
         ),
         content: Column(
@@ -187,51 +198,55 @@ class _SosSettingsScreenState extends ConsumerState<SosSettingsScreen> {
           ],
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel', style: TextStyle(color: Colors.white54)),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: AppColors.sosRed),
-            onPressed: () async {
-              final name = _nameCtrl.text.trim();
-              final phone = _phoneCtrl.text.trim();
-              if (name.isEmpty || phone.isEmpty) {
-                TopToast.show(
-                  context,
-                  title: 'Validation Error',
-                  message: 'Please enter both name and mobile number.',
-                  type: TopToastType.error,
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.sosRed,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              onPressed: () async {
+                final name = _nameCtrl.text.trim();
+                final phone = _phoneCtrl.text.trim();
+                if (name.isEmpty || phone.isEmpty) {
+                  TopToast.show(
+                    context,
+                    title: 'Validation Error',
+                    message: 'Please enter both name and mobile number.',
+                    type: TopToastType.error,
+                  );
+                  return;
+                }
+
+                final user = ref.read(userModelProvider);
+                if (user == null) return;
+
+                final currentContacts = List<EmergencyContact>.from(user.settings.emergencyContacts);
+                currentContacts.add(EmergencyContact(name: name, phone: phone));
+
+                await ref.read(userModelProvider.notifier).updateSettings(
+                  user.settings.copyWith(emergencyContacts: currentContacts),
                 );
-                return;
-              }
 
-              final user = ref.read(userModelProvider);
-              if (user == null) return;
-
-              final currentContacts = List<EmergencyContact>.from(user.settings.emergencyContacts);
-              currentContacts.add(EmergencyContact(name: name, phone: phone));
-
-              await ref.read(userModelProvider.notifier).updateSettings(
-                user.settings.copyWith(emergencyContacts: currentContacts),
-              );
-
-              if (mounted) {
-                Navigator.pop(context);
-                TopToast.show(
-                  context,
-                  title: 'Contact Saved!',
-                  message: '$name added to emergency contacts.',
-                  type: TopToastType.success,
-                );
-              }
-            },
-            child: const Text('Save Contact'),
+                if (mounted) {
+                  Navigator.pop(context);
+                  TopToast.show(
+                    context,
+                    title: 'Contact Saved!',
+                    message: '$name added to emergency contacts.',
+                    type: TopToastType.success,
+                  );
+                }
+              },
+              child: const Text('Save Contact', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+            ),
           ),
         ],
       ),
     );
   }
+
 
   @override
   Widget build(BuildContext context) {

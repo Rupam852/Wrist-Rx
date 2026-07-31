@@ -76,11 +76,22 @@ class _WatchConnectSheetState extends ConsumerState<WatchConnectSheet>
       builder: (dlgCtx) => AlertDialog(
         backgroundColor: AppColors.cardDark,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Row(
+        title: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Icon(Icons.bluetooth_disabled_rounded, color: Colors.amber, size: 28),
-            SizedBox(width: 10),
-            Text('Bluetooth Required', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700)),
+            const Row(
+              children: [
+                Icon(Icons.bluetooth_disabled_rounded, color: Colors.amber, size: 26),
+                SizedBox(width: 8),
+                Text('Bluetooth Required', style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w700)),
+              ],
+            ),
+            IconButton(
+              icon: const Icon(Icons.close_rounded, color: Colors.white54, size: 20),
+              onPressed: () => Navigator.of(dlgCtx).pop(),
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(),
+            ),
           ],
         ),
         content: const Column(
@@ -94,23 +105,27 @@ class _WatchConnectSheetState extends ConsumerState<WatchConnectSheet>
           ],
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dlgCtx).pop(),
-            child: const Text('Cancel', style: TextStyle(color: Colors.white54)),
-          ),
-          FilledButton.icon(
-            style: FilledButton.styleFrom(backgroundColor: AppColors.primary),
-            onPressed: () async {
-              Navigator.of(dlgCtx).pop();
-              try {
-                await FlutterBluePlus.turnOn();
-              } catch (_) {}
-            },
-            icon: const Icon(Icons.bluetooth_rounded, size: 18),
-            label: const Text('Turn ON Bluetooth', style: TextStyle(fontWeight: FontWeight.w700)),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              onPressed: () async {
+                Navigator.of(dlgCtx).pop();
+                try {
+                  await FlutterBluePlus.turnOn();
+                } catch (_) {}
+              },
+              icon: const Icon(Icons.bluetooth_rounded, size: 18),
+              label: const Text('Turn ON Bluetooth', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+            ),
           ),
         ],
       ),
+
     );
   }
 

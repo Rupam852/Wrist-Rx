@@ -106,60 +106,77 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.cardDark,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Row(children: [
-          Icon(Icons.warning_amber_rounded, color: Colors.redAccent, size: 28),
-          SizedBox(width: 10),
-          Text('Wipe All Local Data?', style: TextStyle(color: Colors.white)),
-        ]),
+        title: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Row(
+              children: [
+                Icon(Icons.warning_amber_rounded, color: Colors.redAccent, size: 26),
+                SizedBox(width: 8),
+                Text('Wipe All Local Data?', style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w700)),
+              ],
+            ),
+            IconButton(
+              icon: const Icon(Icons.close_rounded, color: Colors.white54, size: 20),
+              onPressed: () => Navigator.pop(ctx),
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(),
+            ),
+          ],
+        ),
         content: const Text(
           'Are you sure you want to clean all your local health metrics, steps, location data, and AI chat history from this device?\n\nThis action cannot be undone and resets the app state like a brand new installation.',
-          style: TextStyle(color: Colors.white70),
+          style: TextStyle(color: Colors.white70, fontSize: 13, height: 1.4),
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel', style: TextStyle(color: Colors.white54)),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: Colors.redAccent),
-            onPressed: () async {
-              Navigator.pop(ctx);
-              setState(() => _isCleaningData = true);
-              try {
-                final uid = FirebaseAuth.instance.currentUser?.uid;
-                if (uid != null) {
-                  final api = ApiService();
-                  await api.delete(ApiConstants.cleanHealthData(uid));
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: Colors.redAccent,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              onPressed: () async {
+                Navigator.pop(ctx);
+                setState(() => _isCleaningData = true);
+                try {
+                  final uid = FirebaseAuth.instance.currentUser?.uid;
+                  if (uid != null) {
+                    final api = ApiService();
+                    await api.delete(ApiConstants.cleanHealthData(uid));
+                  }
+                  ref.read(healthProvider.notifier).reset();
+                  ref.read(aiMessagesProvider.notifier).clear();
+                  if (mounted) {
+                    TopToast.show(
+                      context,
+                      title: 'Data Cleaned!',
+                      message: 'All local health metrics, steps, & AI chat history wiped successfully.',
+                      type: TopToastType.success,
+                    );
+                  }
+                } catch (e) {
+                  if (mounted) {
+                    TopToast.show(
+                      context,
+                      title: 'Clean Failed',
+                      message: 'Error cleaning data: $e',
+                      type: TopToastType.error,
+                    );
+                  }
+                } finally {
+                  if (mounted) setState(() => _isCleaningData = false);
                 }
-                ref.read(healthProvider.notifier).reset();
-                ref.read(aiMessagesProvider.notifier).clear();
-                if (mounted) {
-                  TopToast.show(
-                    context,
-                    title: 'Data Cleaned!',
-                    message: 'All local health metrics, steps, & AI chat history wiped successfully.',
-                    type: TopToastType.success,
-                  );
-                }
-              } catch (e) {
-                if (mounted) {
-                  TopToast.show(
-                    context,
-                    title: 'Clean Failed',
-                    message: 'Error cleaning data: $e',
-                    type: TopToastType.error,
-                  );
-                }
-              } finally {
-                if (mounted) setState(() => _isCleaningData = false);
-              }
-            },
-            child: const Text('Yes, Clean All Data'),
+              },
+              child: const Text('Yes, Clean All Data', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+            ),
           ),
         ],
       ),
     );
   }
+
 
   @override
   Widget build(BuildContext context) {
