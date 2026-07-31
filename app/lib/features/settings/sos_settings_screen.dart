@@ -5,8 +5,10 @@ import 'package:permission_handler/permission_handler.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/services/top_toast_service.dart';
 import '../../core/services/storage_service.dart';
+import '../../core/services/haptic_service.dart';
 import '../../shared/models/models.dart';
 import '../auth/auth_provider.dart';
+
 
 class SosSettingsScreen extends ConsumerStatefulWidget {
   const SosSettingsScreen({super.key});
@@ -36,10 +38,12 @@ class _SosSettingsScreenState extends ConsumerState<SosSettingsScreen> {
   }
 
   Future<void> _updateSosMethod(String method) async {
+    HapticService.selectionClick(ref);
     // Update local state instantly on tap so UI radio button highlights immediately
     setState(() {
       _selectedSosMethod = method;
     });
+
 
     // Save locally in SharedPreferences
     await StorageService.saveSetting('sos_method', method);

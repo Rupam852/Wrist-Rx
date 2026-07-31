@@ -12,12 +12,14 @@ import '../../core/theme/app_colors.dart';
 import '../../core/services/api_service.dart';
 import '../../core/services/top_toast_service.dart';
 import '../../core/services/storage_service.dart';
+import '../../core/services/haptic_service.dart';
 import '../../core/constants/api_constants.dart';
 import '../watch/watch_connect_sheet.dart';
 import '../watch/watch_details_sheet.dart';
 import '../watch/watch_provider.dart';
 import '../auth/auth_provider.dart';
 import 'health_provider.dart';
+
 
 
 
@@ -786,6 +788,7 @@ class _SosButton extends ConsumerWidget {
               t.cancel();
               return;
             }
+            HapticService.sosCountdownTick(ref);
             if (countdown > 1) {
               setState(() => countdown--);
             } else {
@@ -818,6 +821,7 @@ class _SosButton extends ConsumerWidget {
               TextButton(
                 onPressed: () {
                   timer?.cancel();
+                  HapticService.lightImpact(ref);
                   Navigator.of(dialogCtx).pop();
                 },
                 child: const Text('CANCEL', style: TextStyle(color: Colors.white70, fontWeight: FontWeight.w600)),
@@ -830,14 +834,9 @@ class _SosButton extends ConsumerWidget {
   }
 
   Future<void> _triggerSos(BuildContext context, WidgetRef ref) async {
-    // 1. Heavy Haptic Vibration (only if haptic setting is enabled)
-    try {
-      final user = ref.read(userModelProvider);
-      if (user?.settings.haptic ?? true) {
-        await HapticFeedback.heavyImpact();
-        await HapticFeedback.vibrate();
-      }
-    } catch (_) {}
+    // 1. Heavy Haptic Vibration Pattern
+    HapticService.sosEmergencyVibrate(ref);
+
 
     // 2. Fetch FRESH live GPS location at the exact second SOS is triggered!
     double? lat;

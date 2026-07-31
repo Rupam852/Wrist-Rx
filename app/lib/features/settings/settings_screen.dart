@@ -7,6 +7,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/services/storage_service.dart';
 import '../../core/services/api_service.dart';
 import '../../core/services/top_toast_service.dart';
+import '../../core/services/haptic_service.dart';
 import '../../core/constants/api_constants.dart';
 import '../../shared/models/models.dart';
 import '../auth/auth_provider.dart';
@@ -77,6 +78,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   Future<void> _updateToggle(String key, bool value) async {
+    HapticService.selectionClick(ref);
     final user = ref.read(userModelProvider);
     if (user == null) return;
     UserSettings newSettings;
@@ -85,7 +87,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         newSettings = user.settings.copyWith(haptic: value);
         // Apply haptic immediately when toggled on
         if (value) {
-          HapticFeedback.mediumImpact();
+          HapticService.mediumImpact(ref);
         }
         break;
       case 'syncCloud':
@@ -96,6 +98,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     }
     await ref.read(userModelProvider.notifier).updateSettings(newSettings);
   }
+
 
   void _confirmCleanData(BuildContext context) {
     showDialog(
