@@ -157,10 +157,10 @@ class WatchProtocolRegistry {
       },
     ),
 
-    // 3. Noise (ColorFit, Pulse, Evolve, Fit, Loop, Icon, Turbo) — RT-Thread OS uRPC & Realtek Engine
+    // 3. Noise (ColorFit, Pulse, Evolve, Fit, Loop, Icon, Turbo, Qube, Qube 2) — RT-Thread OS uRPC & Realtek Engine
     WatchBrandProfile(
       brandName: 'Noise',
-      namePrefixes: ['noise', 'colorfit', 'pulse', 'evolve', 'loop', 'icon', 'turbo', 'color fit'],
+      namePrefixes: ['noise', 'colorfit', 'pulse', 'evolve', 'loop', 'icon', 'turbo', 'color fit', 'qube', 'noisefit'],
       headerBytes: [0xAB, 0x55, 0xEA, 0xFC, 0x01],
       stepProbes: [
         [0xAB, 0x00, 0x04, 0xFF, 0x51],

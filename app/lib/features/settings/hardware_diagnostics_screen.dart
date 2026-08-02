@@ -265,18 +265,20 @@ class _HardwareDiagnosticsScreenState extends ConsumerState<HardwareDiagnosticsS
           break;
 
         case 'reminder_push':
-          final res = await ref.read(watchProvider.notifier).testWatchAlert();
+          final res = await ref.read(watchProvider.notifier).testWatchAlert()
+              .timeout(const Duration(seconds: 4), onTimeout: () => (success: false, channelsCount: 0));
           if (res.success) {
             item.status = DiagnosticStatus.passed;
             item.resultMessage = 'Triple-Pulse BLE Wave Sent to ${res.channelsCount} GATT Channel(s)';
           } else {
             item.status = DiagnosticStatus.failed;
-            item.failureRootCause = 'Watch GATT write characteristic not writable or Android Notification Access disabled in phone settings.';
+            item.failureRootCause = 'Watch GATT write characteristic timed out or Android Notification Access disabled in phone settings.';
           }
           break;
 
         case 'sos_channel':
-          await ref.read(watchProvider.notifier).sendSosAlert();
+          await ref.read(watchProvider.notifier).sendSosAlert()
+              .timeout(const Duration(seconds: 4), onTimeout: () => null);
           item.status = DiagnosticStatus.passed;
           item.resultMessage = 'SOS Haptic Burst & Foreground Channel Active';
           break;

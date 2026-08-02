@@ -376,16 +376,16 @@ class WatchNotifier extends StateNotifier<WatchState> {
     try {
       // 1. Try 'write without response' first for zero-latency radio TX queue delivery
       if (char.properties.writeWithoutResponse) {
-        await char.write(bytes, withoutResponse: true);
+        await char.write(bytes, withoutResponse: true).timeout(const Duration(milliseconds: 300));
       } else if (char.properties.write) {
-        await char.write(bytes, withoutResponse: false);
+        await char.write(bytes, withoutResponse: false).timeout(const Duration(milliseconds: 500));
       }
-      await Future.delayed(const Duration(milliseconds: 20));
+      await Future.delayed(const Duration(milliseconds: 15));
     } catch (_) {
       try {
-        // 2. Fallback to 'write with response' if writeWithoutResponse failed
+        // 2. Fallback attempt without response
         if (char.properties.write) {
-          await char.write(bytes, withoutResponse: false);
+          await char.write(bytes, withoutResponse: true).timeout(const Duration(milliseconds: 300));
         }
       } catch (_) {}
     }
