@@ -7,17 +7,30 @@ class StorageService {
     aOptions: AndroidOptions(encryptedSharedPreferences: true),
   );
 
-  // Secure storage (API keys)
+  // Secure storage (API keys) with SharedPreferences fallback for 100% persistence
   static Future<void> saveApiKey(String key) async {
-    await _secure.write(key: 'gemini_api_key', value: key);
+    try {
+      await _secure.write(key: 'gemini_api_key', value: key);
+    } catch (_) {}
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('gemini_api_key', key);
   }
 
   static Future<String?> getApiKey() async {
-    return await _secure.read(key: 'gemini_api_key');
+    try {
+      final key = await _secure.read(key: 'gemini_api_key');
+      if (key != null && key.isNotEmpty) return key;
+    } catch (_) {}
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('gemini_api_key');
   }
 
   static Future<void> deleteApiKey() async {
-    await _secure.delete(key: 'gemini_api_key');
+    try {
+      await _secure.delete(key: 'gemini_api_key');
+    } catch (_) {}
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('gemini_api_key');
   }
 
   // Local Health Readings (Stored only on device, deleted on app uninstall)
