@@ -26,6 +26,9 @@ class BrandSelectionSheet extends ConsumerWidget {
     final profiles = WatchProtocolRegistry.globalBrandProfiles;
 
     return Container(
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.of(context).size.height * 0.85,
+      ),
       padding: const EdgeInsets.all(20),
       decoration: const BoxDecoration(
         color: AppColors.cardDark,
@@ -78,28 +81,35 @@ class BrandSelectionSheet extends ConsumerWidget {
               ),
             ],
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 16),
 
-          ...profiles.map((profile) {
-            final isSelected = selectedProfile?.brandName == profile.brandName;
-            return _BrandOptionTile(
-              profile: profile,
-              isSelected: isSelected,
-              onTap: () {
-                HapticFeedback.mediumImpact();
-                ref.read(watchProvider.notifier).selectWatchBrand(profile);
-                Navigator.of(context).pop();
-                TopToast.show(
-                  context,
-                  title: '${profile.brandName} Protocol Activated! ⚡',
-                  message: 'Dedicated ${profile.brandName} protocol driver locked for live SpO2, Heart Rate, & Reminders.',
-                  type: TopToastType.success,
-                );
-              },
-            );
-          }),
+          Flexible(
+            child: SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              child: Column(
+                children: profiles.map((profile) {
+                  final isSelected = selectedProfile?.brandName == profile.brandName;
+                  return _BrandOptionTile(
+                    profile: profile,
+                    isSelected: isSelected,
+                    onTap: () {
+                      HapticFeedback.mediumImpact();
+                      ref.read(watchProvider.notifier).selectWatchBrand(profile);
+                      Navigator.of(context).pop();
+                      TopToast.show(
+                        context,
+                        title: '${profile.brandName} Protocol Activated! ⚡',
+                        message: 'Dedicated ${profile.brandName} protocol driver locked for live Heart Rate & Reminders.',
+                        type: TopToastType.success,
+                      );
+                    },
+                  );
+                }).toList(),
+              ),
+            ),
+          ),
 
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
         ],
       ),
     );
