@@ -790,26 +790,34 @@ class WatchNotifier extends StateNotifier<WatchState> {
   Future<void> disconnect() async {
     _isManualDisconnect = true;
     _watchPingTimer?.cancel();
+
+    // 1. Instantly update UI state to disconnected for 0-latency feedback
+    final devToDisconnect = _connectedDevice;
+    _connectedDevice = null;
+    state = WatchState(status: WatchConnectionStatus.disconnected);
+    ref.read(watchConnectedProvider.notifier).state = false;
+    ref.read(healthProvider.notifier).reset();
+    ref.read(hrSupportedProvider.notifier).state = true;
+    ref.read(bpSupportedProvider.notifier).state = true;
+    ref.read(stepsSupportedProvider.notifier).state = true;
+
+    // 2. Stop foreground service & BLE subscriptions
+    WatchForegroundService().stop().catchError((_) => null);
     for (final sub in _bleSubscriptions) {
       try { await sub.cancel(); } catch (_) {}
     }
     _bleSubscriptions.clear();
-    _writeCharacteristics.clear();
+    _readableCharacteristics.clear();
 
-    await _connectedDevice?.disconnect();
+    // 3. Drop Bluetooth radio link with 1s timeout cutoff
+    try {
+      await devToDisconnect?.disconnect().timeout(const Duration(seconds: 1));
+    } catch (_) {}
+
+    // 4. Non-blocking backend notification call
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid != null) {
-      try { await _api.post(ApiConstants.disconnectWatch(uid), {}); } catch (_) {}
+      _api.post(ApiConstants.disconnectWatch(uid), {}).catchError((_) => {});
     }
-    _connectedDevice = null;
-    ref.read(healthProvider.notifier).reset();
-    ref.read(watchConnectedProvider.notifier).state = false;
-    ref.read(hrSupportedProvider.notifier).state = true;
-    ref.read(bpSupportedProvider.notifier).state = true;
-    ref.read(stepsSupportedProvider.notifier).state = true;
-    state = WatchState();
-
-    // Stop foreground service - watch disconnected
-    WatchForegroundService().stop().catchError((_) => null);
   }
 }
