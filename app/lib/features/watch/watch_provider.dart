@@ -87,6 +87,14 @@ class WatchNotifier extends StateNotifier<WatchState> {
       });
       _bleSubscriptions.add(connSub);
 
+      // Monitor phone Bluetooth adapter state (if user turns off Bluetooth manually in phone settings)
+      final adapterSub = FlutterBluePlus.adapterState.listen((adapterState) {
+        if (adapterState == BluetoothAdapterState.off && !_isManualDisconnect) {
+          _handleOutOfRangeDisconnect(device.platformName.isNotEmpty ? device.platformName : 'Smartwatch');
+        }
+      });
+      _bleSubscriptions.add(adapterSub);
+
       final uid = FirebaseAuth.instance.currentUser?.uid;
       if (uid != null) {
         try {
