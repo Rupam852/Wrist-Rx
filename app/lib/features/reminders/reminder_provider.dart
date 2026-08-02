@@ -67,9 +67,9 @@ class ReminderNotifier extends StateNotifier<ReminderState> {
     super.dispose();
   }
 
-  // ── Clock ticker: checks every 30s if a reminder should fire ──────────────
+  // ── Clock ticker: checks every 5s if a reminder should fire ──────────────
   void _startClock() {
-    _clockTimer = Timer.periodic(const Duration(seconds: 15), (_) {
+    _clockTimer = Timer.periodic(const Duration(seconds: 5), (_) {
       _checkAndFire();
     });
   }
@@ -114,7 +114,7 @@ class ReminderNotifier extends StateNotifier<ReminderState> {
           .toList();
       state = state.copyWith(
         reminders:         items,
-        watchAlertEnabled: result['watchAlertEnabled'] as bool? ?? false,
+        watchAlertEnabled: result['watchAlertEnabled'] as bool? ?? true,
         isLoading:         false,
       );
     } catch (e) {
@@ -141,6 +141,8 @@ class ReminderNotifier extends StateNotifier<ReminderState> {
 
   void addReminder(MedicineReminder reminder) {
     state = state.copyWith(reminders: [...state.reminders, reminder]);
+    saveChanges();
+    _checkAndFire();
   }
 
   void removeReminder(String reminderId) {

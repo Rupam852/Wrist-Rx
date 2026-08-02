@@ -462,6 +462,24 @@ class _ReminderCard extends StatelessWidget {
             ),
           ),
 
+          // Instant Test button
+          Consumer(
+            builder: (context, ref, _) => IconButton(
+              icon: const Icon(Icons.vibration_rounded, color: AppColors.primary, size: 20),
+              tooltip: 'Test this reminder on watch',
+              onPressed: () {
+                HapticFeedback.selectionClick();
+                ref.read(watchProvider.notifier).sendWatchNotification(reminder.name);
+                TopToast.show(
+                  context,
+                  title: 'Reminder Alert Sent!',
+                  message: 'Sent vibration alert for "${reminder.name}" to your smartwatch!',
+                  type: TopToastType.success,
+                );
+              },
+            ),
+          ),
+
           // Remove button
           IconButton(
             icon: const Icon(Icons.cancel_rounded, color: Colors.white24, size: 22),
