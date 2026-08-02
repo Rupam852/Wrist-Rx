@@ -248,8 +248,17 @@ class WatchNotifier extends StateNotifier<WatchState> {
     }
 
     // Auto-detect Watch Brand & Model Protocol Profile from Registry
-    final dName = device.platformName.isNotEmpty ? device.platformName : 'Smartwatch';
+    final dName = (device.platformName.isNotEmpty)
+        ? device.platformName
+        : (state.deviceName?.isNotEmpty == true ? state.deviceName! : 'Smartwatch');
+    
     _detectedBrandProfile = WatchProtocolRegistry.detectBrand(dName, manufacturer);
+
+    // Fallback: If detection is ambiguous, default to Noise / Realtek Multi-Vendor engine (supports uRPC + Moyoung + 0xAB/0xEA)
+    _detectedBrandProfile ??= WatchProtocolRegistry.globalBrandProfiles.firstWhere(
+      (p) => p.brandName == 'Noise',
+      orElse: () => WatchProtocolRegistry.globalBrandProfiles[0],
+    );
 
     // Resolve Hardware Protocol Mode
     HardwareProtocol resolvedProtocol = HardwareProtocol.vendorGeneric;
@@ -387,6 +396,12 @@ class WatchNotifier extends StateNotifier<WatchState> {
         }
       } catch (_) {}
     }
+  }
+
+  /// Public API: Manually trigger watch sync probe burst (e.g. during hardware diagnostics)
+  void triggerWatchSyncManually() {
+    _triggerWatchSync();
+    Future.delayed(const Duration(milliseconds: 300), () => _triggerWatchSync());
   }
 
   /// Sends smart sync probes every cycle:

@@ -145,8 +145,12 @@ class _HardwareDiagnosticsScreenState extends ConsumerState<HardwareDiagnosticsS
 
     _log('🚀 Starting Genuine Smartwatch Hardware Diagnostics Suite...');
     _log('Watch Name: ${watchState.deviceName ?? "Smartwatch"}');
-    _log('Selected Protocol Engine: ${watchState.selectedBrandProfile?.brandName ?? "Auto-Detected"}');
+    _log('Selected Protocol Engine: ${watchState.selectedBrandProfile?.brandName ?? "Noise (RT-Thread uRPC)"}');
     _log('---------------------------------------------------------');
+
+    // Trigger immediate hardware telemetry probe burst
+    ref.read(watchProvider.notifier).triggerWatchSyncManually();
+    await Future.delayed(const Duration(milliseconds: 500));
 
     for (int i = 0; i < _tests.length; i++) {
       setState(() => _currentStepIndex = i);
