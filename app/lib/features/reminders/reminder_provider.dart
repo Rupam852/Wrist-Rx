@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/services/api_service.dart';
 import '../../core/constants/api_constants.dart';
 import '../../shared/models/models.dart';
+import '../home/health_provider.dart';
 import '../watch/watch_provider.dart';
 
 // ─── Providers ────────────────────────────────────────────────────────────────
