@@ -280,7 +280,45 @@ class WatchDetailsSheet extends ConsumerWidget {
             ),
           ),
 
-          const SizedBox(height: 16),
+          // ── Brand Protocol Selection Card ─────────────────────
+          GestureDetector(
+            onTap: () {
+              Navigator.pop(context);
+              BrandSelectionSheet.show(context);
+            },
+            child: Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withOpacity(0.12),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: AppColors.primary.withOpacity(0.3)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.settings_suggest_rounded, color: AppColors.primary, size: 20),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Brand Protocol Engine: ${watchState.selectedBrandProfile?.brandName ?? ref.read(watchProvider.notifier).detectedBrandName}',
+                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13),
+                        ),
+                        const Text(
+                          'Tap to select Noise, Fire-Boltt, boAt, or Custom Watch',
+                          style: TextStyle(color: Colors.white54, fontSize: 11),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Icon(Icons.chevron_right_rounded, color: Colors.white38, size: 18),
+                ],
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 12),
 
 
 

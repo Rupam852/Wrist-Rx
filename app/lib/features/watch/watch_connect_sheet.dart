@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/services/top_toast_service.dart';
 import '../home/health_provider.dart';
+import 'brand_selection_sheet.dart';
 import 'watch_provider.dart';
 
 class WatchConnectSheet extends ConsumerStatefulWidget {
@@ -135,13 +136,9 @@ class _WatchConnectSheetState extends ConsumerState<WatchConnectSheet>
       await ref.read(watchProvider.notifier).connectViaBluetooth(device);
       ref.read(watchConnectedProvider.notifier).state = true;
       if (mounted) {
-        TopToast.show(
-          context,
-          title: 'Watch Connected!',
-          message: 'Connected to ${device.platformName}',
-          type: TopToastType.success,
-        );
         Navigator.pop(context);
+        // Prompt user to select their exact Watch Brand Engine
+        BrandSelectionSheet.show(context);
       }
     } catch (e) {
       if (mounted) {
