@@ -9,6 +9,7 @@ class WatchBrandProfile {
   final List<List<int>> hrProbes;
   final List<List<int>> bpProbes;
   final List<List<int>> batteryProbes;
+  final List<List<int>> spo2Probes;
   final List<List<int>> vibrationProbes;
   final List<List<int>> Function(String text)? getNotificationPackets;
 
@@ -20,6 +21,7 @@ class WatchBrandProfile {
     required this.hrProbes,
     required this.bpProbes,
     required this.batteryProbes,
+    this.spo2Probes = const [],
     this.vibrationProbes = const [],
     this.getNotificationPackets,
   });

@@ -20,6 +20,7 @@ final watchConnectedProvider = StateProvider<bool>((ref) => false);
 final hrSupportedProvider = StateProvider<bool>((ref) => true);    // Track whether watch hardware has HR sensor
 final bpSupportedProvider = StateProvider<bool>((ref) => true);    // Track whether watch hardware has BP sensor
 final stepsSupportedProvider = StateProvider<bool>((ref) => true); // Track whether watch hardware has Pedometer
+final spo2SupportedProvider = StateProvider<bool>((ref) => true);  // Track whether watch hardware has SpO2 sensor
 
 
 class HealthNotifier extends StateNotifier<HealthReading> {
@@ -74,6 +75,7 @@ class HealthNotifier extends StateNotifier<HealthReading> {
         systolic: localReading.systolic > 0 ? localReading.systolic : state.systolic,
         diastolic: localReading.diastolic > 0 ? localReading.diastolic : state.diastolic,
         steps: localReading.steps > state.steps ? localReading.steps : state.steps,
+        spo2: localReading.spo2 > 0 ? localReading.spo2 : state.spo2,
         lat: localReading.lat ?? state.lat,
         lng: localReading.lng ?? state.lng,
       );
@@ -113,6 +115,9 @@ class HealthNotifier extends StateNotifier<HealthReading> {
     }
 
 
+    final sp = payload['spo2'] ?? payload['spO2'] ?? payload['oxygen'] ?? data['spo2'] ?? data['spO2'] ?? data['oxygen'];
+    final int validSpo2 = (sp != null && (sp as num) > 0) ? (sp as num).toInt() : state.spo2;
+
     final double? validLat = (lat != null) ? (lat as num).toDouble() : state.lat;
     final double? validLng = (lng != null) ? (lng as num).toDouble() : state.lng;
 
@@ -121,6 +126,7 @@ class HealthNotifier extends StateNotifier<HealthReading> {
       systolic: validSys,
       diastolic: validDia,
       steps: validSteps,
+      spo2: validSpo2,
       lat: validLat,
       lng: validLng,
     );

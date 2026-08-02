@@ -117,6 +117,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
     final isHrSupported = ref.watch(hrSupportedProvider);
     final isBpSupported = ref.watch(bpSupportedProvider);
     final isStepsSupported = ref.watch(stepsSupportedProvider);
+    final isSpo2Supported = ref.watch(spo2SupportedProvider);
     final user = ref.watch(userModelProvider);
 
     final watchDisplayName = (watchState.deviceName != null && watchState.deviceName!.isNotEmpty)
@@ -143,6 +144,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
     // Displays stored calculated data immediately, and updates live when watch calculates new data
     final hasHr = health.heartRate > 0;
     final hasBp = health.systolic > 0 && health.diastolic > 0;
+    final hasSpo2 = health.spo2 > 0;
     final hasGps = health.lat != null && health.lng != null;
 
 
@@ -339,6 +341,23 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
                     isPulsing: isConnected && isStepsSupported,
                     pulseController: _pulseController,
                     smallValue: isConnected && !isStepsSupported,
+                  ),
+                  // 4. Blood Oxygen (SpO2 %)
+                  _MetricCard(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF06B6D4), Color(0xFF0284C7)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    icon: Icons.air_rounded,
+                    title: 'Blood Oxygen (SpO2)',
+                    value: (isConnected && !isSpo2Supported)
+                        ? 'N/A'
+                        : (hasSpo2 ? '${health.spo2}%' : '--%'),
+                    unit: (isConnected && !isSpo2Supported) ? 'Not supported on watch' : 'SpO2 %',
+                    isPulsing: isConnected && hasSpo2 && isSpo2Supported,
+                    pulseController: _pulseController,
+                    smallValue: isConnected && !isSpo2Supported,
                   ),
                   // 5. GPS Location (Tap to view/share fresh map link)
                   GestureDetector(

@@ -390,6 +390,10 @@ class WatchNotifier extends StateNotifier<WatchState> {
           for (final p in _detectedBrandProfile!.bpProbes) {
             await _sendBleCommand(char, p);
           }
+        } else {
+          for (final p in _detectedBrandProfile!.spo2Probes) {
+            await _sendBleCommand(char, p);
+          }
         }
       }
       return;
@@ -418,8 +422,12 @@ class WatchNotifier extends StateNotifier<WatchState> {
         // Step probe cycle B (VeryFit / JYou / FastRun / GATT)
         await _sendBleCommand(char, [0xEA, 0x01]);
       } else {
-        // HR & SpO2 probe cycle
+        // HR, BP & SpO2 probe cycle
         await _sendBleCommand(char, [0xAB, 0x00, 0x04, 0xFF, 0x52]);
+        await _sendBleCommand(char, [0xAB, 0x00, 0x04, 0xFF, 0x53]);
+        await _sendBleCommand(char, [0xAB, 0x53]);
+        await _sendBleCommand(char, [0x55, 0x53]);
+        await _sendBleCommand(char, [0xEA, 0x53]);
         await _sendBleCommand(char, [0xAB, 0x0A]);
         await _sendBleCommand(char, [0x55, 0x0A]);
         await _sendBleCommand(char, [0xAB, 0x12]);
@@ -526,6 +534,21 @@ class WatchNotifier extends StateNotifier<WatchState> {
       return; // This UUID is BP - don't fall through
     }
 
+    // Standard GATT Pulse Oximeter / SpO2 (0x1822 / 0x2A5E / 0x2A5F)
+    if (u.contains('2a5e') || u.contains('2a5f') || u.contains('1822') || u.contains('spo2') || u.contains('oximeter')) {
+      if (bytes.length >= 2) {
+        for (int i = 0; i < bytes.length; i++) {
+          int spo2 = bytes[i];
+          if (spo2 >= 70 && spo2 <= 100) {
+            ref.read(spo2SupportedProvider.notifier).state = true;
+            _saveAndPush({'spo2': spo2});
+            return;
+          }
+        }
+      }
+      return;
+    }
+
     // Standard GATT RSC / Step Counter (0x2A53 / service 0x1814, 0x2A56 pedometer)
     if (u.contains('2a53') || u.contains('1814') || u.contains('2a56') ||
         u.contains('pedometer') || u.contains('step')) {
@@ -610,6 +633,20 @@ class WatchNotifier extends StateNotifier<WatchState> {
         if (sys >= 60 && sys <= 240 && dia >= 30 && dia <= 160) {
           ref.read(bpSupportedProvider.notifier).state = true;
           _saveAndPush({'systolic': sys, 'diastolic': dia});
+          return;
+        }
+      }
+      return;
+    }
+
+    // ── Vendor Blood Oxygen (SpO2 %) Response ──────────────────────────────
+    // Command codes: 0x53, 0x12, 0x16
+    if (effectiveCmd == 0x53 || effectiveCmd == 0x12 || effectiveCmd == 0x16) {
+      for (int i = dataStart; i < bytes.length; i++) {
+        int spo2 = bytes[i];
+        if (spo2 >= 70 && spo2 <= 100) {
+          ref.read(spo2SupportedProvider.notifier).state = true;
+          _saveAndPush({'spo2': spo2});
           return;
         }
       }
