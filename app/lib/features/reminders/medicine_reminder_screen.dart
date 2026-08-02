@@ -347,21 +347,21 @@ class _WatchAlertCard extends ConsumerWidget {
                 const SizedBox(width: 8),
                 InkWell(
                   onTap: () async {
-                    final ok = await ref.read(watchProvider.notifier).testWatchAlert();
+                    final res = await ref.read(watchProvider.notifier).testWatchAlert();
                     if (context.mounted) {
-                      if (ok) {
+                      if (res.success) {
                         TopToast.show(
                           context,
                           title: 'Vibration Signal Sent!',
-                          message: 'Sent test alert & vibration signal to watch.',
+                          message: 'Sent test alert to ${res.channelsCount} BLE channel(s) & status bar!',
                           type: TopToastType.success,
                         );
                       } else {
                         TopToast.show(
                           context,
-                          title: 'Test Failed',
-                          message: 'Watch Bluetooth writable channel not found.',
-                          type: TopToastType.error,
+                          title: 'Status Bar Alert Sent!',
+                          message: 'Status bar alert posted. Check watch notification settings in NoiseFit/companion app.',
+                          type: TopToastType.info,
                         );
                       }
                     }

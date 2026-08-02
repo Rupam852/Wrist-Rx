@@ -246,24 +246,51 @@ class WatchNotifier extends StateNotifier<WatchState> {
   /// 🆘 Sends SOS alert to watch — 3x vibration + "SOS Sent!" text
   /// Called when user triggers SOS from the app.
   Future<void> sendSosAlert() async {
-    if (_writeCharacteristics.isEmpty) return;
-    const sosText = 'SOS Sent!';
-    await _sendWatchTextAndVibrate(sosText, vibrationStrength: 3);
+    // 1. Post to Android status bar via foreground service (for OS notification mirroring to watch)
+    WatchForegroundService().updateNotification(
+      watchName: state.deviceName ?? 'Smartwatch',
+      dataInfo: '🚨 EMERGENCY SOS ALERT SENT!',
+    ).catchError((_) => null);
+
+    // 2. Send direct BLE vibration packets
+    if (_writeCharacteristics.isNotEmpty) {
+      const sosText = 'SOS Sent!';
+      await _sendWatchTextAndVibrate(sosText, vibrationStrength: 3);
+    }
   }
 
-  /// 💊 Sends medicine reminder notification to watch — 2x vibration + medicine name
+  /// 💊 Sends medicine reminder notification to watch — 3x vibration + medicine name
   /// Called by ReminderProvider when a reminder time fires.
   Future<void> sendWatchNotification(String medicineName) async {
-    if (_writeCharacteristics.isEmpty) return;
     final text = medicineName.length > 18 ? medicineName.substring(0, 18) : medicineName;
-    await _sendWatchTextAndVibrate('Take: $text', vibrationStrength: 2);
+
+    // 1. Post high-priority update to status bar notification (Android relays to watch automatically)
+    WatchForegroundService().updateNotification(
+      watchName: state.deviceName ?? 'Smartwatch',
+      dataInfo: '💊 REMINDER: Take $text',
+    ).catchError((_) => null);
+
+    // 2. Direct BLE byte burst
+    if (_writeCharacteristics.isNotEmpty) {
+      await _sendWatchTextAndVibrate('Take: $text', vibrationStrength: 3);
+    }
   }
 
   /// 🧪 Test watch alert — vibrates watch immediately & shows test message
-  Future<bool> testWatchAlert() async {
-    if (_writeCharacteristics.isEmpty) return false;
-    await _sendWatchTextAndVibrate('Test Alert', vibrationStrength: 2);
-    return true;
+  Future<({bool success, int channelsCount})> testWatchAlert() async {
+    // 1. Trigger status bar notification update
+    WatchForegroundService().updateNotification(
+      watchName: state.deviceName ?? 'Smartwatch',
+      dataInfo: '🧪 TEST ALERT: Watch Vibration Test!',
+    ).catchError((_) => null);
+
+    if (_writeCharacteristics.isEmpty) {
+      return (success: false, channelsCount: 0);
+    }
+
+    // 2. Direct BLE byte burst
+    await _sendWatchTextAndVibrate('Test Alert', vibrationStrength: 3);
+    return (success: true, channelsCount: _writeCharacteristics.length);
   }
 
   /// Internal helper: vibrate + optional text message via multi-vendor BLE protocols
@@ -311,10 +338,21 @@ class WatchNotifier extends StateNotifier<WatchState> {
 
   Future<void> _sendBleCommand(BluetoothCharacteristic char, List<int> bytes) async {
     try {
-      final noResp = char.properties.writeWithoutResponse;
-      await char.write(bytes, withoutResponse: noResp);
+      // 1. Try 'write with response' first if supported (most smartwatch firmware requires ACK)
+      if (char.properties.write) {
+        await char.write(bytes, withoutResponse: false);
+      } else if (char.properties.writeWithoutResponse) {
+        await char.write(bytes, withoutResponse: true);
+      }
       await Future.delayed(const Duration(milliseconds: 30));
-    } catch (_) {}
+    } catch (_) {
+      try {
+        // 2. Fallback to 'write without response' if write with ACK failed
+        if (char.properties.writeWithoutResponse) {
+          await char.write(bytes, withoutResponse: true);
+        }
+      } catch (_) {}
+    }
   }
 
   /// Sends smart sync probes every cycle:
