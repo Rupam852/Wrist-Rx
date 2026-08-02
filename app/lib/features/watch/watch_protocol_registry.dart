@@ -9,6 +9,8 @@ class WatchBrandProfile {
   final List<List<int>> hrProbes;
   final List<List<int>> bpProbes;
   final List<List<int>> batteryProbes;
+  final List<List<int>> vibrationProbes;
+  final List<List<int>> Function(String text)? getNotificationPackets;
 
   const WatchBrandProfile({
     required this.brandName,
@@ -18,11 +20,13 @@ class WatchBrandProfile {
     required this.hrProbes,
     required this.bpProbes,
     required this.batteryProbes,
+    this.vibrationProbes = const [],
+    this.getNotificationPackets,
   });
 }
 
 class WatchProtocolRegistry {
-  static const List<WatchBrandProfile> globalBrandProfiles = [
+  static List<WatchBrandProfile> globalBrandProfiles = [
     // 1. Fire-Boltt (Ninja, Ring, Phoenix, Hurricane, Invincible, Vision, Dazzle, Talk, Cobra, Supernova)
     WatchBrandProfile(
       brandName: 'Fire-Boltt',
@@ -47,6 +51,20 @@ class WatchProtocolRegistry {
         [0xAB, 0x91],
         [0xAA, 0x91],
       ],
+      vibrationProbes: [
+        [0xAB, 0x00, 0x04, 0xFF, 0x74, 0x02],
+        [0xAB, 0x74, 0x02],
+        [0x55, 0x74, 0x02],
+      ],
+      getNotificationPackets: (text) {
+        final b = text.codeUnits.take(20).toList();
+        final len = b.length + 4;
+        return [
+          [0xAB, 0x00, len, 0xFF, 0x72, 0x02, 0x00, ...b],
+          [0xAB, 0x72, 0x01, ...b],
+          [0x55, 0x72, ...b],
+        ];
+      },
     ),
 
     // 2. boAt (Wave, Storm, Xtend, Lunar, Enigma, Primia, Matrix, Cosmos)
@@ -72,6 +90,19 @@ class WatchProtocolRegistry {
         [0xAB, 0x91],
         [0x04, 0x02],
       ],
+      vibrationProbes: [
+        [0xAB, 0x00, 0x04, 0xFF, 0x74, 0x02],
+        [0xAB, 0x74, 0x02],
+        [0xAA, 0x74, 0x02],
+      ],
+      getNotificationPackets: (text) {
+        final b = text.codeUnits.take(20).toList();
+        final len = b.length + 4;
+        return [
+          [0xAB, 0x00, len, 0xFF, 0x72, 0x02, 0x00, ...b],
+          [0xAB, 0x72, 0x01, ...b],
+        ];
+      },
     ),
 
     // 3. Noise (ColorFit, Pulse, Evolve, Fit, Loop, Icon, Turbo)
@@ -94,6 +125,19 @@ class WatchProtocolRegistry {
         [0xAB, 0x91],
         [0xAB, 0x03],
       ],
+      vibrationProbes: [
+        [0xEA, 0x02, 0x02],
+        [0xAB, 0x74, 0x02],
+        [0x55, 0x74, 0x02],
+      ],
+      getNotificationPackets: (text) {
+        final b = text.codeUnits.take(20).toList();
+        return [
+          [0xEA, 0x01, ...b],
+          [0x55, 0x72, ...b],
+          [0xAB, 0x72, 0x01, ...b],
+        ];
+      },
     ),
 
     // 4. Fastrack (Revoltt, Reflex, Limitless, Glide, Optimus)
@@ -113,6 +157,17 @@ class WatchProtocolRegistry {
       batteryProbes: [
         [0xAB, 0x91],
       ],
+      vibrationProbes: [
+        [0xAB, 0x74, 0x02],
+        [0x55, 0x74, 0x02],
+      ],
+      getNotificationPackets: (text) {
+        final b = text.codeUnits.take(20).toList();
+        return [
+          [0xAB, 0x72, 0x01, ...b],
+          [0x55, 0x72, ...b],
+        ];
+      },
     ),
 
     // 5. Boult (Rover, Crown, Drift, Striker, Mirage, Cosmic)
@@ -132,6 +187,16 @@ class WatchProtocolRegistry {
       batteryProbes: [
         [0xAB, 0x91],
       ],
+      vibrationProbes: [
+        [0xAB, 0x74, 0x02],
+        [0xAA, 0x74, 0x02],
+      ],
+      getNotificationPackets: (text) {
+        final b = text.codeUnits.take(20).toList();
+        return [
+          [0xAB, 0x72, 0x01, ...b],
+        ];
+      },
     ),
 
     // 6. Pebble (Cosmos, Spectra, Pace, Venus, Frost, Hive)
@@ -151,12 +216,21 @@ class WatchProtocolRegistry {
       batteryProbes: [
         [0xAB, 0x91],
       ],
+      vibrationProbes: [
+        [0xAB, 0x74, 0x02],
+      ],
+      getNotificationPackets: (text) {
+        final b = text.codeUnits.take(20).toList();
+        return [
+          [0xAB, 0x72, 0x01, ...b],
+        ];
+      },
     ),
 
-    // 7. FitPro / T500 / Ultra 8 / S8 Ultra / Chinese Clone Clones (Qube, ZL02, Y20, D20)
+    // 7. FitPro / T500 / Ultra 8 / S8 Ultra / Chinese Clones (Qube, ZL02, Y20, D20)
     WatchBrandProfile(
       brandName: 'FitPro / Chinese Smartwatch',
-      namePrefixes: ['fitpro', 't500', 'ultra', 'qube', 'zl02', 'y20', 'd20', 'watch8', 's8', 'i8', 'smart'],
+      namePrefixes: ['fitpro', 't500', 'ultra', 'qube', 'zl02', 'y20', 'd20', 'watch8', 's8', 'i8', 'smart', 'hryfine', 'lefun'],
       headerBytes: [0xAB, 0xCD, 0xEA, 0xAA, 0x55],
       stepProbes: [
         [0xAB, 0x00, 0x04, 0xFF, 0x51],
@@ -178,6 +252,19 @@ class WatchProtocolRegistry {
         [0xAB, 0x91],
         [0xAA, 0x91],
       ],
+      vibrationProbes: [
+        [0xAB, 0x00, 0x04, 0xFF, 0x74, 0x02],
+        [0xAB, 0x74, 0x02],
+        [0xAB, 0x00, 0x05, 0xFF, 0x72, 0x01, 0x01],
+      ],
+      getNotificationPackets: (text) {
+        final b = text.codeUnits.take(20).toList();
+        final len = b.length + 4;
+        return [
+          [0xAB, 0x00, len, 0xFF, 0x72, 0x02, 0x00, ...b],
+          [0xAB, 0x72, 0x01, ...b],
+        ];
+      },
     ),
 
     // 8. Xiaomi / Redmi / Amazfit / Zepp OS
@@ -197,6 +284,17 @@ class WatchProtocolRegistry {
       batteryProbes: [
         [0xAB, 0x91],
       ],
+      vibrationProbes: [
+        [0x02], // GATT Alert Level 0x2A06 (High Alert)
+        [0xAB, 0x74, 0x02],
+      ],
+      getNotificationPackets: (text) {
+        final b = text.codeUnits.take(20).toList();
+        return [
+          [0x01, 0x01, ...b], // GATT New Alert Service 0x1811 / 0x2A46
+          [0xAB, 0x72, 0x01, ...b],
+        ];
+      },
     ),
 
     // 9. Realme Watch / Huawei / Honor
@@ -216,6 +314,17 @@ class WatchProtocolRegistry {
       batteryProbes: [
         [0xAB, 0x91],
       ],
+      vibrationProbes: [
+        [0x02],
+        [0xAB, 0x74, 0x02],
+      ],
+      getNotificationPackets: (text) {
+        final b = text.codeUnits.take(20).toList();
+        return [
+          [0x01, 0x01, ...b],
+          [0xAB, 0x72, 0x01, ...b],
+        ];
+      },
     ),
   ];
 

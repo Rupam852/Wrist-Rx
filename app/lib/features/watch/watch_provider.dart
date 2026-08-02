@@ -266,24 +266,36 @@ class WatchNotifier extends StateNotifier<WatchState> {
     for (final char in _writeCharacteristics) {
       final cUuid = char.uuid.toString().toLowerCase();
 
-      // 1. Standard GATT Immediate Alert Service (0x1802 / 0x2A06)
+      // 1. If exact Brand Profile was auto-detected, send brand-tuned packets first
+      if (_detectedBrandProfile != null) {
+        for (final p in _detectedBrandProfile!.vibrationProbes) {
+          await _sendBleCommand(char, p);
+        }
+        if (_detectedBrandProfile!.getNotificationPackets != null) {
+          for (final p in _detectedBrandProfile!.getNotificationPackets!(text)) {
+            await _sendBleCommand(char, p);
+          }
+        }
+      }
+
+      // 2. Standard GATT Immediate Alert Service (0x1802 / 0x2A06)
       if (cUuid.contains('2a06')) {
         await _sendBleCommand(char, [vibrationStrength > 1 ? 0x02 : 0x01]);
       }
 
-      // 2. FitPro / LH719 / Y68 / D20 Vibrate & Notification Commands (0xAB)
+      // 3. Multi-Vendor Burst Fallback across all major chipset families
       await _sendBleCommand(char, [0xAB, 0x00, 0x04, 0xFF, 0x74, vibrationStrength]);
       await _sendBleCommand(char, [0xAB, 0x74, vibrationStrength]);
       await _sendBleCommand(char, [0xAB, 0x00, len, 0xFF, 0x72, 0x02, 0x00, ...textBytes]);
       await _sendBleCommand(char, [0xAB, 0x72, 0x01, ...textBytes]);
-      await Future.delayed(const Duration(milliseconds: 60));
+      await Future.delayed(const Duration(milliseconds: 50));
 
-      // 3. DaFit / VeryFit / HBand Multi-Vendor Protocol Headers (0x55, 0xAA, 0xEA)
       await _sendBleCommand(char, [0x55, 0x74, vibrationStrength]);
       await _sendBleCommand(char, [0xAA, 0x74, vibrationStrength]);
       await _sendBleCommand(char, [0xEA, 0x02, vibrationStrength]);
       await _sendBleCommand(char, [0x55, 0x72, ...textBytes]);
-      await Future.delayed(const Duration(milliseconds: 40));
+      await _sendBleCommand(char, [0xEA, 0x01, ...textBytes]);
+      await Future.delayed(const Duration(milliseconds: 30));
     }
   }
 
