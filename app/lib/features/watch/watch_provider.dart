@@ -571,11 +571,11 @@ class WatchNotifier extends StateNotifier<WatchState> {
     if (bytes.length < 2) return;
     final firstByte = bytes[0];
 
-    // Only process known vendor protocol headers
+    // Only process known vendor protocol headers (including 0x01 for Noise uRPC/D2D)
     if (firstByte != 0xAB && firstByte != 0x55 && firstByte != 0xAA &&
         firstByte != 0xFA && firstByte != 0xFC && firstByte != 0x7C &&
         firstByte != 0xEA && firstByte != 0x04 && firstByte != 0x68 &&
-        firstByte != 0xCD && firstByte != 0x80) {
+        firstByte != 0xCD && firstByte != 0x80 && firstByte != 0x01) {
       return;
     }
 
@@ -640,8 +640,9 @@ class WatchNotifier extends StateNotifier<WatchState> {
     }
 
     // ── Vendor Blood Oxygen (SpO2 %) Response ──────────────────────────────
-    // Command codes: 0x53, 0x12, 0x16
-    if (effectiveCmd == 0x53 || effectiveCmd == 0x12 || effectiveCmd == 0x16) {
+    // Command codes: 0x53, 0x12, 0x16, 0x0B, 0x1B, 0x70
+    if (effectiveCmd == 0x53 || effectiveCmd == 0x12 || effectiveCmd == 0x16 ||
+        effectiveCmd == 0x0B || effectiveCmd == 0x1B || effectiveCmd == 0x70) {
       for (int i = dataStart; i < bytes.length; i++) {
         int spo2 = bytes[i];
         if (spo2 >= 70 && spo2 <= 100) {
@@ -653,28 +654,22 @@ class WatchNotifier extends StateNotifier<WatchState> {
       return;
     }
 
-    // ── Universal Pedometer Payload Scanner ─────────────────────────────────
-    // Scans full byte array for 2-byte and 4-byte step integers (Little Endian)
-    int extractedSteps = 0;
-    for (int i = 0; i <= bytes.length - 2; i++) {
-      int val = bytes[i] | (bytes[i + 1] << 8);
-      if (val > extractedSteps && val < 200000 && val >= 1) {
-        extractedSteps = val;
-      }
-    }
-    if (bytes.length >= 4) {
-      for (int i = 0; i <= bytes.length - 4; i++) {
-        int val = bytes[i] | (bytes[i + 1] << 8) | (bytes[i + 2] << 16) | (bytes[i + 3] << 24);
-        if (val > extractedSteps && val < 200000 && val >= 1) {
-          extractedSteps = val;
+    // ── Verified Vendor Pedometer (Steps) Response ────────────────────────
+    // Command codes: 0x51, 0x31, 0x01, 0x02, 0x32, 0x11
+    if (effectiveCmd == 0x51 || effectiveCmd == 0x31 || effectiveCmd == 0x01 ||
+        effectiveCmd == 0x02 || effectiveCmd == 0x32 || effectiveCmd == 0x11) {
+      if (bytes.length >= dataStart + 2) {
+        int steps = bytes[dataStart] | (bytes[dataStart + 1] << 8);
+        if (bytes.length >= dataStart + 4) {
+          steps = bytes[dataStart] | (bytes[dataStart + 1] << 8) | (bytes[dataStart + 2] << 16) | (bytes[dataStart + 3] << 24);
+        }
+        if (steps >= 0 && steps < 200000) {
+          ref.read(stepsSupportedProvider.notifier).state = true;
+          _saveAndPush({'steps': steps});
+          return;
         }
       }
     }
-
-    if (extractedSteps > 0) {
-      ref.read(stepsSupportedProvider.notifier).state = true;
-      _saveAndPush({'steps': extractedSteps});
-     }
 
 
   }
