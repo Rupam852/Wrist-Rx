@@ -304,11 +304,13 @@ class _HardwareDiagnosticsScreenState extends ConsumerState<HardwareDiagnosticsS
     final passedCount = _tests.where((t) => t.status == DiagnosticStatus.passed).length;
     final failedCount = _tests.where((t) => t.status == DiagnosticStatus.failed).length;
 
+    final activeBrand = watchState.selectedBrandProfile?.brandName ?? ref.read(watchProvider.notifier).detectedBrandName;
+
     final buffer = StringBuffer();
     buffer.writeln('📋 **WRIST RX SMARTWATCH HARDWARE DIAGNOSTIC REPORT**');
     buffer.writeln('==================================================');
     buffer.writeln('⌚ **Watch Model:** ${watchState.deviceName ?? "Smartwatch"}');
-    buffer.writeln('⚙️ **Brand Protocol:** ${watchState.selectedBrandProfile?.brandName ?? "Auto-Detected"}');
+    buffer.writeln('⚙️ **Brand Protocol:** $activeBrand');
     buffer.writeln('📅 **Date:** ${DateTime.now().toString().substring(0, 19)}');
     buffer.writeln('📊 **Overall Score:** $passedCount / ${_tests.length} PASSED ($failedCount Failed)');
     buffer.writeln('==================================================\n');
@@ -432,7 +434,7 @@ class _HardwareDiagnosticsScreenState extends ConsumerState<HardwareDiagnosticsS
                             style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w800),
                           ),
                           Text(
-                            'Protocol Engine: ${watchState.selectedBrandProfile?.brandName ?? "Auto-Detected"}',
+                            'Protocol Engine: ${watchState.selectedBrandProfile?.brandName ?? ref.read(watchProvider.notifier).detectedBrandName}',
                             style: const TextStyle(color: Colors.white60, fontSize: 12),
                           ),
                         ],

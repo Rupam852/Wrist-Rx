@@ -63,6 +63,14 @@ class WatchNotifier extends StateNotifier<WatchState> {
   final Ref ref;
   WatchNotifier(this.ref) : super(WatchState());
 
+  /// Returns the detected brand engine name (e.g. "Noise", "Fire-Boltt", etc.)
+  String get detectedBrandName {
+    if (_detectedBrandProfile != null) {
+      return _detectedBrandProfile!.brandName;
+    }
+    return 'Noise';
+  }
+
   /// Explicitly selects and locks watch brand protocol engine (Noise / Fire-Boltt / boAt / Universal)
   void selectWatchBrand(WatchBrandProfile profile) {
     _detectedBrandProfile = profile;
