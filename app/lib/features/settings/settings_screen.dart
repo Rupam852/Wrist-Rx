@@ -13,6 +13,7 @@ import '../../shared/models/models.dart';
 import '../auth/auth_provider.dart';
 import '../home/health_provider.dart';
 import '../ai/ai_provider.dart';
+import 'hardware_diagnostics_screen.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -352,6 +353,36 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   ),
                 ),
               ],
+            ),
+          ),
+          const SizedBox(height: 24),
+
+          // ── Smartwatch Hardware Diagnostics ────────────
+          _SectionHeader('Smartwatch Hardware & Protocols'),
+          Container(
+            decoration: BoxDecoration(
+              color: AppColors.cardDark,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AppColors.primary.withOpacity(0.3)),
+            ),
+            child: ListTile(
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+              leading: Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.build_circle_rounded, color: AppColors.primary, size: 24),
+              ),
+              title: const Text('Hardware Diagnostics Suite',
+                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 15)),
+              subtitle: const Text(
+                'Run live hardware sensor tests (SpO2, Steps, Reminders) & share diagnostic logs',
+                style: TextStyle(color: Colors.white60, fontSize: 12),
+              ),
+              trailing: const Icon(Icons.chevron_right_rounded, color: Colors.white54),
+              onTap: () => HardwareDiagnosticsScreen.show(context),
             ),
           ),
           const SizedBox(height: 24),
