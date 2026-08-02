@@ -145,6 +145,16 @@ class ReminderNotifier extends StateNotifier<ReminderState> {
     _checkAndFire();
   }
 
+  void updateReminder(MedicineReminder updatedReminder) {
+    state = state.copyWith(
+      reminders: state.reminders
+          .map((r) => r.reminderId == updatedReminder.reminderId ? updatedReminder : r)
+          .toList(),
+    );
+    saveChanges();
+    _checkAndFire();
+  }
+
   void removeReminder(String reminderId) {
     state = state.copyWith(
       reminders: state.reminders.where((r) => r.reminderId != reminderId).toList(),

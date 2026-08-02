@@ -79,6 +79,21 @@ class _BodyState extends ConsumerState<_Body> {
     }
   }
 
+  // ── Edit Reminder ────────────────────────────────────────────────
+  Future<void> _editReminder(MedicineReminder reminder) async {
+    HapticFeedback.selectionClick();
+    final result = await showModalBottomSheet<MedicineReminder>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => AddReminderSheet(existingReminder: reminder),
+    );
+    if (result != null) {
+      widget.notifier.updateReminder(result);
+      _markChanged();
+    }
+  }
+
   // ── Remove Reminder ─────────────────────────────────────────────
   void _removeReminder(String reminderId, String name) {
     HapticFeedback.mediumImpact();
@@ -169,6 +184,7 @@ class _BodyState extends ConsumerState<_Body> {
             return _ReminderCard(
               reminder:   reminder,
               onRemove:   () => _removeReminder(reminder.reminderId, reminder.name),
+              onEdit:     () => _editReminder(reminder),
             )
                 .animate(delay: (idx * 60).ms)
                 .fadeIn(duration: 300.ms)
@@ -401,93 +417,112 @@ class _WatchAlertCard extends ConsumerWidget {
 class _ReminderCard extends StatelessWidget {
   final MedicineReminder reminder;
   final VoidCallback      onRemove;
+  final VoidCallback      onEdit;
 
-  const _ReminderCard({required this.reminder, required this.onRemove});
+  const _ReminderCard({
+    required this.reminder,
+    required this.onRemove,
+    required this.onEdit,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
-      decoration: BoxDecoration(
-        color: AppColors.cardDark,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.white.withOpacity(0.07)),
-      ),
-      child: Row(
-        children: [
-          // Time badge
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-            decoration: BoxDecoration(
-              color: AppColors.primary.withOpacity(0.12),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Text(
-              reminder.timeLabel12h,
-              style: const TextStyle(
-                color: AppColors.primary,
-                fontWeight: FontWeight.w800,
-                fontSize: 13,
+    return GestureDetector(
+      onTap: onEdit,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+        decoration: BoxDecoration(
+          color: AppColors.cardDark,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: Colors.white.withOpacity(0.07)),
+        ),
+        child: Row(
+          children: [
+            // Time badge
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withOpacity(0.12),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                reminder.timeLabel12h,
+                style: const TextStyle(
+                  color: AppColors.primary,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 13,
+                ),
               ),
             ),
-          ),
-          const SizedBox(width: 12),
+            const SizedBox(width: 12),
 
-          // Name + description
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  reminder.name,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 14,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                if (reminder.description.isNotEmpty) ...[
-                  const SizedBox(height: 2),
+            // Name + description
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
                   Text(
-                    reminder.description,
-                    style: TextStyle(color: AppColors.onSurfaceDark, fontSize: 12),
+                    reminder.name,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 14,
+                    ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
+                  if (reminder.description.isNotEmpty) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      reminder.description,
+                      style: TextStyle(color: AppColors.onSurfaceDark, fontSize: 12),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
                 ],
-              ],
+              ),
             ),
-          ),
 
-          // Instant Test button
-          Consumer(
-            builder: (context, ref, _) => IconButton(
-              icon: const Icon(Icons.vibration_rounded, color: AppColors.primary, size: 20),
-              tooltip: 'Test this reminder on watch',
-              onPressed: () {
-                HapticFeedback.selectionClick();
-                ref.read(watchProvider.notifier).sendWatchNotification(reminder.name);
-                TopToast.show(
-                  context,
-                  title: 'Reminder Alert Sent!',
-                  message: 'Sent vibration alert for "${reminder.name}" to your smartwatch!',
-                  type: TopToastType.success,
-                );
-              },
+            // Instant Test button
+            Consumer(
+              builder: (context, ref, _) => IconButton(
+                icon: const Icon(Icons.vibration_rounded, color: AppColors.primary, size: 20),
+                tooltip: 'Test this reminder on watch',
+                onPressed: () {
+                  HapticFeedback.selectionClick();
+                  ref.read(watchProvider.notifier).sendWatchNotification(reminder.name);
+                  TopToast.show(
+                    context,
+                    title: 'Reminder Alert Sent!',
+                    message: 'Sent vibration alert for "${reminder.name}" to your smartwatch!',
+                    type: TopToastType.success,
+                  );
+                },
+              ),
             ),
-          ),
 
-          // Remove button
-          IconButton(
-            icon: const Icon(Icons.cancel_rounded, color: Colors.white24, size: 22),
-            onPressed: onRemove,
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-          ),
-        ],
+            // Edit button
+            IconButton(
+              icon: const Icon(Icons.edit_rounded, color: Colors.white54, size: 18),
+              tooltip: 'Edit reminder',
+              onPressed: onEdit,
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+            ),
+
+            const SizedBox(width: 4),
+
+            // Remove button
+            IconButton(
+              icon: const Icon(Icons.cancel_rounded, color: Colors.white24, size: 22),
+              onPressed: onRemove,
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+            ),
+          ],
+        ),
       ),
     );
   }

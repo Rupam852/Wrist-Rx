@@ -7,17 +7,29 @@ import '../../shared/models/models.dart';
 /// Bottom sheet for adding a new medicine reminder.
 /// Returns a [MedicineReminder] via Navigator.pop() when saved.
 class AddReminderSheet extends StatefulWidget {
-  const AddReminderSheet({super.key});
+  final MedicineReminder? existingReminder;
+  const AddReminderSheet({super.key, this.existingReminder});
 
   @override
   State<AddReminderSheet> createState() => _AddReminderSheetState();
 }
 
 class _AddReminderSheetState extends State<AddReminderSheet> {
-  final _nameController = TextEditingController();
-  final _descController = TextEditingController();
-  TimeOfDay _selectedTime = TimeOfDay.now();
+  late final TextEditingController _nameController;
+  late final TextEditingController _descController;
+  late TimeOfDay _selectedTime;
   bool _isSaving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final r = widget.existingReminder;
+    _nameController = TextEditingController(text: r?.name ?? '');
+    _descController = TextEditingController(text: r?.description ?? '');
+    _selectedTime = r != null
+        ? TimeOfDay(hour: r.timeHour, minute: r.timeMinute)
+        : TimeOfDay.now();
+  }
 
   @override
   void dispose() {
@@ -58,7 +70,7 @@ class _AddReminderSheetState extends State<AddReminderSheet> {
     setState(() => _isSaving = true);
 
     final reminder = MedicineReminder(
-      reminderId:  const Uuid().v4(),
+      reminderId:  widget.existingReminder?.reminderId ?? const Uuid().v4(),
       name:        name,
       description: _descController.text.trim(),
       timeHour:    _selectedTime.hour,
@@ -106,9 +118,9 @@ class _AddReminderSheetState extends State<AddReminderSheet> {
                 child: const Icon(Icons.medication_rounded, color: AppColors.primary, size: 20),
               ),
               const SizedBox(width: 12),
-              const Text(
-                'Add Medicine Reminder',
-                style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w700),
+              Text(
+                widget.existingReminder != null ? 'Edit Medicine Reminder' : 'Add Medicine Reminder',
+                style: const TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w700),
               ),
             ],
           ),
