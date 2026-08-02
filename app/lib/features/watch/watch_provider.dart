@@ -194,38 +194,40 @@ class WatchNotifier extends StateNotifier<WatchState> {
         isStandardGatt = true;
       }
 
-      for (final characteristic in service.characteristics) {
-        // Collect writable characteristics
-        if (characteristic.properties.write || characteristic.properties.writeWithoutResponse) {
-          _writeCharacteristics.add(characteristic);
-        }
+      if (!sUuid.contains('1800') && !sUuid.contains('1801')) {
+        for (final characteristic in service.characteristics) {
+          // Collect writable characteristics
+          if (characteristic.properties.write || characteristic.properties.writeWithoutResponse) {
+            _writeCharacteristics.add(characteristic);
+          }
 
-        // Collect readable characteristics & read initial value
-        if (characteristic.properties.read) {
-          _readableCharacteristics.add(characteristic);
-          try {
-            final initialBytes = await characteristic.read();
-            if (initialBytes.isNotEmpty) {
-              _parseBleBytes(initialBytes, characteristic.uuid.toString());
-            }
-          } catch (_) {}
-        }
+          // Collect readable characteristics & read initial value
+          if (characteristic.properties.read) {
+            _readableCharacteristics.add(characteristic);
+            try {
+              final initialBytes = await characteristic.read();
+              if (initialBytes.isNotEmpty) {
+                _parseBleBytes(initialBytes, characteristic.uuid.toString());
+              }
+            } catch (_) {}
+          }
 
-        // Enable Notifications / Indications
-        if (characteristic.properties.notify || characteristic.properties.indicate) {
-          try {
-            final sub = characteristic.lastValueStream.listen(
-              (value) {
-                if (value.isNotEmpty) {
-                  _parseBleBytes(value, characteristic.uuid.toString());
-                }
-              },
-              onError: (_) {},
-              cancelOnError: false,
-            );
-            _bleSubscriptions.add(sub);
-            await characteristic.setNotifyValue(true);
-          } catch (_) {}
+          // Enable Notifications / Indications
+          if (characteristic.properties.notify || characteristic.properties.indicate) {
+            try {
+              final sub = characteristic.lastValueStream.listen(
+                (value) {
+                  if (value.isNotEmpty) {
+                    _parseBleBytes(value, characteristic.uuid.toString());
+                  }
+                },
+                onError: (_) {},
+                cancelOnError: false,
+              );
+              _bleSubscriptions.add(sub);
+              await characteristic.setNotifyValue(true);
+            } catch (_) {}
+          }
         }
       }
     }

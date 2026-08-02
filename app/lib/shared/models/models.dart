@@ -232,7 +232,7 @@ class MedicineReminder {
   });
 
   factory MedicineReminder.fromJson(Map<String, dynamic> json) => MedicineReminder(
-    reminderId:  json['reminderId'] ?? '',
+    reminderId:  json['reminderId'] ?? json['_id'] ?? DateTime.now().millisecondsSinceEpoch.toString(),
     name:        json['name'] ?? '',
     description: json['description'] ?? '',
     timeHour:    json['timeHour'] ?? 0,

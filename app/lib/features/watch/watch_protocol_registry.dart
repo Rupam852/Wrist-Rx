@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 /// 🌐 Global Smartwatch Brand & Model Protocol Database Registry
 /// Maps every major smartwatch brand and OEM chipset worldwide to their exact BLE protocol probes & capabilities.
 
@@ -405,11 +407,11 @@ class NoiseUrpcDriver {
   static List<int> buildNotificationPushPacket(String text, {String title = 'Wrist Rx'}) {
     _pktCounter = (_pktCounter + 1) % 256;
 
-    final titleBytes = [...title.codeUnits, 0];
-    final senderBytes = [... 'WristRx'.codeUnits, 0];
-    final textBytes  = [...text.codeUnits, 0];
-    final msgTypeBytes = [... 'msg'.codeUnits, 0];
-    final waysBytes = [... 'banner'.codeUnits, 0];
+    final titleBytes = [...utf8.encode(title), 0];
+    final senderBytes = [...utf8.encode('WristRx'), 0];
+    final textBytes  = [...utf8.encode(text), 0];
+    final msgTypeBytes = [...utf8.encode('msg'), 0];
+    final waysBytes = [...utf8.encode('banner'), 0];
 
     // uRPC FFI Arguments
     final ffiArgs = <int>[
