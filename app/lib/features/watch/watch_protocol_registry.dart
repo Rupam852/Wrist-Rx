@@ -29,31 +29,41 @@ class WatchBrandProfile {
 
 class WatchProtocolRegistry {
   static List<WatchBrandProfile> globalBrandProfiles = [
-    // 1. Fire-Boltt (Ninja, Ring, Phoenix, Hurricane, Invincible, Vision, Dazzle, Talk, Cobra, Supernova)
+    // 1. Fire-Boltt (Ninja, Ring, Phoenix, Hurricane, Invincible, Vision, Dazzle, Talk, Cobra, Supernova) — DaFit Protocol Engine
     WatchBrandProfile(
       brandName: 'Fire-Boltt',
-      namePrefixes: ['fire', 'boltt', 'ninja', 'ring', 'phoenix', 'invincible', 'vision', 'dazzle', 'talk', 'cobra'],
-      headerBytes: [0xAB, 0x55, 0xAA, 0xCD],
+      namePrefixes: ['fire', 'boltt', 'ninja', 'ring', 'phoenix', 'invincible', 'vision', 'dazzle', 'talk', 'cobra', 'dafit'],
+      headerBytes: [0xAB, 0x55, 0xAA, 0xCD, 0xEA],
       stepProbes: [
         [0xAB, 0x00, 0x04, 0xFF, 0x51],
         [0xAB, 0x51],
         [0x55, 0x51],
+        [0xEA, 0x01],
       ],
       hrProbes: [
         [0xAB, 0x00, 0x04, 0xFF, 0x0A],
         [0xAB, 0x0A],
         [0x55, 0x0A],
+        [0xEA, 0x0A],
       ],
       bpProbes: [
         [0xAB, 0x00, 0x04, 0xFF, 0x52],
         [0xAB, 0x52],
+        [0xEA, 0x52],
       ],
       batteryProbes: [
         [0xAB, 0x00, 0x04, 0xFF, 0x91],
         [0xAB, 0x91],
         [0xAA, 0x91],
+        [0xEA, 0x91],
+      ],
+      spo2Probes: [
+        [0xAB, 0x00, 0x04, 0xFF, 0x53],
+        [0xAB, 0x53],
+        [0xEA, 0x53],
       ],
       vibrationProbes: [
+        [0xEA, 0x02, 0x02],
         [0xAB, 0x00, 0x04, 0xFF, 0x74, 0x02],
         [0xAB, 0x74, 0x02],
         [0x55, 0x74, 0x02],
@@ -62,6 +72,7 @@ class WatchProtocolRegistry {
         final b = text.codeUnits.take(20).toList();
         final len = b.length + 4;
         return [
+          [0xEA, 0x01, 0x01, ...b],
           [0xAB, 0x00, len, 0xFF, 0x72, 0x02, 0x00, ...b],
           [0xAB, 0x72, 0x01, ...b],
           [0x55, 0x72, ...b],
@@ -69,30 +80,40 @@ class WatchProtocolRegistry {
       },
     ),
 
-    // 2. boAt (Wave, Storm, Xtend, Lunar, Enigma, Primia, Matrix, Cosmos)
+    // 2. boAt (Wave, Storm, Xtend, Lunar, Enigma, Primia, Matrix, Cosmos) — boAt Wearables Engine
     WatchBrandProfile(
       brandName: 'boAt',
-      namePrefixes: ['boat', 'wave', 'storm', 'xtend', 'lunar', 'enigma', 'primia', 'matrix'],
-      headerBytes: [0xAB, 0x55, 0xCD, 0xFA],
+      namePrefixes: ['boat', 'wave', 'storm', 'xtend', 'lunar', 'enigma', 'primia', 'matrix', 'flash', 'ultima'],
+      headerBytes: [0xAB, 0x55, 0xCD, 0xFA, 0xEA],
       stepProbes: [
         [0xAB, 0x00, 0x04, 0xFF, 0x31],
         [0xAB, 0x31],
         [0x55, 0x01],
+        [0xEA, 0x01],
       ],
       hrProbes: [
         [0xAB, 0x00, 0x04, 0xFF, 0x0A],
         [0xAB, 0x0A],
+        [0xEA, 0x0A],
       ],
       bpProbes: [
         [0xAB, 0x00, 0x04, 0xFF, 0x52],
         [0xAB, 0x52],
+        [0xEA, 0x52],
       ],
       batteryProbes: [
         [0xAB, 0x00, 0x04, 0xFF, 0x91],
         [0xAB, 0x91],
         [0x04, 0x02],
+        [0xEA, 0x91],
+      ],
+      spo2Probes: [
+        [0xAB, 0x00, 0x04, 0xFF, 0x53],
+        [0xAB, 0x53],
+        [0xEA, 0x53],
       ],
       vibrationProbes: [
+        [0xEA, 0x02, 0x02],
         [0xAB, 0x00, 0x04, 0xFF, 0x74, 0x02],
         [0xAB, 0x74, 0x02],
         [0xAA, 0x74, 0x02],
@@ -101,8 +122,10 @@ class WatchProtocolRegistry {
         final b = text.codeUnits.take(20).toList();
         final len = b.length + 4;
         return [
+          [0xEA, 0x01, 0x01, ...b],
           [0xAB, 0x00, len, 0xFF, 0x72, 0x02, 0x00, ...b],
           [0xAB, 0x72, 0x01, ...b],
+          [0x55, 0x72, ...b],
         ];
       },
     ),
