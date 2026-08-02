@@ -251,19 +251,39 @@ class WatchNotifier extends StateNotifier<WatchState> {
     await _sendWatchTextAndVibrate('Take: $text', vibrationStrength: 2);
   }
 
-  /// Internal helper: vibrate + optional text message via vendor BLE protocol
+  /// 🧪 Test watch alert — vibrates watch immediately & shows test message
+  Future<bool> testWatchAlert() async {
+    if (_writeCharacteristics.isEmpty) return false;
+    await _sendWatchTextAndVibrate('Test Alert', vibrationStrength: 2);
+    return true;
+  }
+
+  /// Internal helper: vibrate + optional text message via multi-vendor BLE protocols
   Future<void> _sendWatchTextAndVibrate(String text, {int vibrationStrength = 1}) async {
     final textBytes = text.codeUnits.take(20).toList();
     final len       = textBytes.length + 4;
 
     for (final char in _writeCharacteristics) {
-      // ── Vibrate command (vendor: 0xAB 0x00 0x04 0xFF 0x74 <count>) ──
-      await _sendBleCommand(char, [0xAB, 0x00, 0x04, 0xFF, 0x74, vibrationStrength]);
-      await Future.delayed(const Duration(milliseconds: 100));
+      final cUuid = char.uuid.toString().toLowerCase();
 
-      // ── Notification text (vendor: 0xAB 0x00 <len> 0xFF 0x72 0x02 0x00 <text>) ──
+      // 1. Standard GATT Immediate Alert Service (0x1802 / 0x2A06)
+      if (cUuid.contains('2a06')) {
+        await _sendBleCommand(char, [vibrationStrength > 1 ? 0x02 : 0x01]);
+      }
+
+      // 2. FitPro / LH719 / Y68 / D20 Vibrate & Notification Commands (0xAB)
+      await _sendBleCommand(char, [0xAB, 0x00, 0x04, 0xFF, 0x74, vibrationStrength]);
+      await _sendBleCommand(char, [0xAB, 0x74, vibrationStrength]);
       await _sendBleCommand(char, [0xAB, 0x00, len, 0xFF, 0x72, 0x02, 0x00, ...textBytes]);
-      await Future.delayed(const Duration(milliseconds: 50));
+      await _sendBleCommand(char, [0xAB, 0x72, 0x01, ...textBytes]);
+      await Future.delayed(const Duration(milliseconds: 60));
+
+      // 3. DaFit / VeryFit / HBand Multi-Vendor Protocol Headers (0x55, 0xAA, 0xEA)
+      await _sendBleCommand(char, [0x55, 0x74, vibrationStrength]);
+      await _sendBleCommand(char, [0xAA, 0x74, vibrationStrength]);
+      await _sendBleCommand(char, [0xEA, 0x02, vibrationStrength]);
+      await _sendBleCommand(char, [0x55, 0x72, ...textBytes]);
+      await Future.delayed(const Duration(milliseconds: 40));
     }
   }
 

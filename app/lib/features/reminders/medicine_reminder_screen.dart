@@ -224,7 +224,7 @@ class _BodyState extends ConsumerState<_Body> {
 
 // ─── Watch Alert Toggle Card ──────────────────────────────────────────────────
 
-class _WatchAlertCard extends StatelessWidget {
+class _WatchAlertCard extends ConsumerWidget {
   final bool enabled;
   final bool watchConnected;
   final ValueChanged<bool> onChanged;
@@ -236,7 +236,7 @@ class _WatchAlertCard extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final isActive = watchConnected; // toggle is only interactive when watch is connected
 
     return Container(
@@ -303,37 +303,92 @@ class _WatchAlertCard extends StatelessWidget {
             ],
           ),
 
-          // Status chip
+          // Status chip + Test Button
           const SizedBox(height: 12),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-            decoration: BoxDecoration(
-              color: watchConnected && enabled
-                  ? Colors.green.withOpacity(0.12)
-                  : Colors.white.withOpacity(0.05),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  watchConnected && enabled ? Icons.radio_button_checked : Icons.radio_button_unchecked,
-                  size: 10,
-                  color: watchConnected && enabled ? Colors.green : Colors.white30,
+          Row(
+            children: [
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                  decoration: BoxDecoration(
+                    color: watchConnected && enabled
+                        ? Colors.green.withOpacity(0.12)
+                        : Colors.white.withOpacity(0.05),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        watchConnected && enabled ? Icons.radio_button_checked : Icons.radio_button_unchecked,
+                        size: 10,
+                        color: watchConnected && enabled ? Colors.green : Colors.white30,
+                      ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          watchConnected
+                              ? (enabled ? 'Alerts ON — watch will vibrate at reminder time' : 'Alerts OFF')
+                              : 'Watch not connected',
+                          style: TextStyle(
+                            color: watchConnected && enabled ? Colors.green : Colors.white30,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-                const SizedBox(width: 6),
-                Text(
-                  watchConnected
-                      ? (enabled ? 'Alerts ON — watch will vibrate at reminder time' : 'Alerts OFF')
-                      : 'Watch not connected',
-                  style: TextStyle(
-                    color: watchConnected && enabled ? Colors.green : Colors.white30,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
+              ),
+              if (watchConnected) ...[
+                const SizedBox(width: 8),
+                InkWell(
+                  onTap: () async {
+                    final ok = await ref.read(watchProvider.notifier).testWatchAlert();
+                    if (context.mounted) {
+                      if (ok) {
+                        TopToast.show(
+                          context,
+                          title: 'Vibration Signal Sent!',
+                          message: 'Sent test alert & vibration signal to watch.',
+                          type: TopToastType.success,
+                        );
+                      } else {
+                        TopToast.show(
+                          context,
+                          title: 'Test Failed',
+                          message: 'Watch Bluetooth writable channel not found.',
+                          type: TopToastType.error,
+                        );
+                      }
+                    }
+                  },
+                  borderRadius: BorderRadius.circular(8),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: AppColors.primary.withOpacity(0.3)),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.vibration_rounded, color: AppColors.primary, size: 14),
+                        SizedBox(width: 4),
+                        Text(
+                          'Test Watch',
+                          style: TextStyle(color: AppColors.primary, fontSize: 11, fontWeight: FontWeight.w700),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ],
-            ),
+            ],
           ),
         ],
       ),
