@@ -105,14 +105,15 @@ class WatchProtocolRegistry {
       },
     ),
 
-    // 3. Noise (ColorFit, Pulse, Evolve, Fit, Loop, Icon, Turbo)
+    // 3. Noise (ColorFit, Pulse, Evolve, Fit, Loop, Icon, Turbo) — RT-Thread OS uRPC Engine
     WatchBrandProfile(
       brandName: 'Noise',
       namePrefixes: ['noise', 'colorfit', 'pulse', 'evolve', 'loop', 'icon', 'turbo'],
-      headerBytes: [0xAB, 0x55, 0xEA, 0xFC],
+      headerBytes: [0xAB, 0x55, 0xEA, 0xFC, 0x01],
       stepProbes: [
         [0xAB, 0x00, 0x04, 0xFF, 0x51],
         [0x55, 0x02],
+        [0x01, 0x01, 0x00, 0x01, 0x30, 0x01], // uRPC system_data_sync
       ],
       hrProbes: [
         [0xAB, 0x0A],
@@ -124,8 +125,10 @@ class WatchProtocolRegistry {
       batteryProbes: [
         [0xAB, 0x91],
         [0xAB, 0x03],
+        [0x01, 0x01, 0x00, 0x02, 0x30, 0x01], // uRPC service_settings_get
       ],
       vibrationProbes: [
+        NoiseUrpcDriver.buildVibrationPacket(),
         [0xEA, 0x02, 0x02],
         [0xAB, 0x74, 0x02],
         [0x55, 0x74, 0x02],
@@ -133,6 +136,7 @@ class WatchProtocolRegistry {
       getNotificationPackets: (text) {
         final b = text.codeUnits.take(20).toList();
         return [
+          NoiseUrpcDriver.buildNotificationPushPacket(text),
           [0xEA, 0x01, ...b],
           [0x55, 0x72, ...b],
           [0xAB, 0x72, 0x01, ...b],
@@ -341,5 +345,76 @@ class WatchProtocolRegistry {
       }
     }
     return null;
+  }
+}
+
+/// ⚡ Native Noise RT-Thread uRPC & MCF Protocol Driver
+/// Reverse-engineered directly from NoiseFit decompiled APK source code.
+class NoiseUrpcDriver {
+  static int _pktCounter = 0;
+
+  /// Builds RT-Thread uRPC D2D "svc_notification_push" packet
+  static List<int> buildNotificationPushPacket(String text, {String title = 'Wrist Rx'}) {
+    _pktCounter = (_pktCounter + 1) % 256;
+
+    final titleBytes = [...title.codeUnits, 0];
+    final senderBytes = [... 'WristRx'.codeUnits, 0];
+    final textBytes  = [...text.codeUnits, 0];
+    final msgTypeBytes = [... 'msg'.codeUnits, 0];
+    final waysBytes = [... 'banner'.codeUnits, 0];
+
+    // uRPC FFI Arguments
+    final ffiArgs = <int>[
+      ..._argArray(titleBytes),         // title
+      ..._argArray([0]),                // icon_path
+      ..._argArray(senderBytes),        // sender
+      ..._argArray(textBytes),          // text_content
+      ..._argArray([0]),                // image_context_path
+      ..._argArray(msgTypeBytes),       // msg_type
+      ..._argArray(waysBytes),          // presenting_ways
+      ..._argU32(1),                    // priority = 1
+      ..._argU32(DateTime.now().millisecondsSinceEpoch ~/ 1000), // timestamp
+    ];
+
+    final funcName = [... 'svc_notification_push'.codeUnits, 0];
+
+    // Payload: [0x01 (FFI), func_name_str, ffiArgs]
+    final payload = <int>[0x01, ...funcName, ...ffiArgs];
+
+    // D2D Header: [src_id=1, dst_id=0, pkt_id, attr]
+    // attr = (REQ=0 << 6) | (need_ack=1 << 5) | (need_rsp=1 << 4) = 0x30
+    final d2dHeader = <int>[0x01, 0x00, _pktCounter, 0x30];
+
+    // TransPacket wrapper: [Type.D2D = 1, ...d2dHeader, ...payload]
+    return [0x01, ...d2dHeader, ...payload];
+  }
+
+  /// Builds RT-Thread uRPC vibration alert packet
+  static List<int> buildVibrationPacket() {
+    _pktCounter = (_pktCounter + 1) % 256;
+    final funcName = [... 'svc_alert_vibrate'.codeUnits, 0];
+    final payload = <int>[0x01, ...funcName, ..._argU32(2)];
+    final d2dHeader = <int>[0x01, 0x00, _pktCounter, 0x30];
+    return [0x01, ...d2dHeader, ...payload];
+  }
+
+  static List<int> _argArray(List<int> bytes) {
+    final len = bytes.length;
+    return [
+      0x81, // U8 | ARRAY (0x01 | 0x80)
+      len & 0xFF,
+      (len >> 8) & 0xFF,
+      ...bytes,
+    ];
+  }
+
+  static List<int> _argU32(int val) {
+    return [
+      0x04, // U32
+      val & 0xFF,
+      (val >> 8) & 0xFF,
+      (val >> 16) & 0xFF,
+      (val >> 24) & 0xFF,
+    ];
   }
 }
