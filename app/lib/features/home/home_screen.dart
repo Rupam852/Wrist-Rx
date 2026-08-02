@@ -18,8 +18,8 @@ import '../watch/watch_connect_sheet.dart';
 import '../watch/watch_details_sheet.dart';
 import '../watch/watch_provider.dart';
 import '../auth/auth_provider.dart';
-import 'health_provider.dart';
 import '../reminders/reminder_provider.dart';
+import 'health_provider.dart';
 
 
 
@@ -369,10 +369,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
 
               const SizedBox(height: 20),
 
-              // Medicine Reminder Card (above SOS Button)
-              const _MedicineReminderCard(),
+              // Medicine Reminder Button
+              const _MedicineReminderButton(),
 
-              const SizedBox(height: 16),
+              const SizedBox(height: 14),
 
               // SOS Button
               _SosButton(),
@@ -759,119 +759,76 @@ class _MetricCard extends StatelessWidget {
   }
 }
 
-class _MedicineReminderCard extends ConsumerWidget {
-  const _MedicineReminderCard();
+class _MedicineReminderButton extends ConsumerWidget {
+  const _MedicineReminderButton();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final reminderState = ref.watch(reminderProvider);
-    final reminders = reminderState.reminders;
-    final watchConnected = ref.watch(watchConnectedProvider);
+    final count = reminderState.reminders.length;
 
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.cardDark,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.primary.withOpacity(0.2)),
-      ),
-      child: Material(
-        color: Colors.transparent,
-        borderRadius: BorderRadius.circular(20),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(20),
-          onTap: () => context.push('/reminders'),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: AppColors.primary.withOpacity(0.15),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Icon(Icons.medication_rounded, color: AppColors.primary, size: 22),
+    return GestureDetector(
+      onTap: () {
+        HapticService.selectionClick(ref);
+        context.push('/reminders');
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: AppColors.cardDark,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: AppColors.primary.withOpacity(0.3), width: 1.5),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.2),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: AppColors.primary.withOpacity(0.18),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(Icons.medication_rounded, color: AppColors.primary, size: 24),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Medicine Reminder',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 15,
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Medicine Reminders',
-                            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 15),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            reminders.isEmpty
-                                ? 'No reminders set • Tap to add'
-                                : '${reminders.length} active reminder${reminders.length > 1 ? 's' : ''}',
-                            style: TextStyle(color: AppColors.onSurfaceDark, fontSize: 12),
-                          ),
-                        ],
-                      ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    count > 0
+                        ? '$count active reminder${count > 1 ? 's' : ''} set'
+                        : 'Set daily medicine reminders & watch alerts',
+                    style: TextStyle(
+                      color: count > 0 ? AppColors.primary : AppColors.onSurfaceDark,
+                      fontSize: 12,
+                      fontWeight: count > 0 ? FontWeight.w600 : FontWeight.w400,
                     ),
-                    if (watchConnected && reminderState.watchAlertEnabled)
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: Colors.green.withOpacity(0.15),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Colors.greenAccent.withOpacity(0.3)),
-                        ),
-                        child: const Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.watch_rounded, color: Colors.greenAccent, size: 12),
-                            SizedBox(width: 4),
-                            Text('Sync', style: TextStyle(color: Colors.greenAccent, fontSize: 10, fontWeight: FontWeight.w700)),
-                          ],
-                        ),
-                      ),
-                    const SizedBox(width: 4),
-                    const Icon(Icons.chevron_right_rounded, color: Colors.white38, size: 22),
-                  ],
-                ),
-                if (reminders.isNotEmpty) ...[
-                  const SizedBox(height: 12),
-                  const Divider(height: 1, color: Colors.white10),
-                  const SizedBox(height: 10),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 6,
-                    children: reminders.take(3).map((r) => Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.05),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: Colors.white.withOpacity(0.08)),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            r.timeLabel12h,
-                            style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w700, fontSize: 11),
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            r.name,
-                            style: const TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.w500),
-                          ),
-                        ],
-                      ),
-                    )).toList(),
                   ),
                 ],
-              ],
+              ),
             ),
-          ),
+            const Icon(Icons.arrow_forward_ios_rounded, color: Colors.white38, size: 16),
+          ],
         ),
-      ),
-    ).animate().fadeIn(delay: 250.ms);
+      ).animate().fadeIn(delay: 250.ms),
+    );
   }
 }
 
