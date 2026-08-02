@@ -300,8 +300,12 @@ class WatchNotifier extends StateNotifier<WatchState> {
       dataInfo: '💊 REMINDER: Take $text',
     ).catchError((_) => null);
 
-    // 2. Direct BLE byte burst
+    // 2. Direct BLE byte burst — 3 consecutive pulse waves to guarantee watch vibration motor triggers
     if (_writeCharacteristics.isNotEmpty) {
+      await _sendWatchTextAndVibrate('Take: $text', vibrationStrength: 3);
+      await Future.delayed(const Duration(milliseconds: 300));
+      await _sendWatchTextAndVibrate('Take: $text', vibrationStrength: 3);
+      await Future.delayed(const Duration(milliseconds: 300));
       await _sendWatchTextAndVibrate('Take: $text', vibrationStrength: 3);
     }
   }
@@ -318,7 +322,9 @@ class WatchNotifier extends StateNotifier<WatchState> {
       return (success: false, channelsCount: 0);
     }
 
-    // 2. Direct BLE byte burst
+    // 2. Direct BLE byte burst — 3 pulse waves
+    await _sendWatchTextAndVibrate('Test Alert', vibrationStrength: 3);
+    await Future.delayed(const Duration(milliseconds: 300));
     await _sendWatchTextAndVibrate('Test Alert', vibrationStrength: 3);
     return (success: true, channelsCount: _writeCharacteristics.length);
   }
