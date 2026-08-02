@@ -266,7 +266,7 @@ class _HardwareDiagnosticsScreenState extends ConsumerState<HardwareDiagnosticsS
 
         case 'reminder_push':
           final res = await ref.read(watchProvider.notifier).testWatchAlert()
-              .timeout(const Duration(seconds: 4), onTimeout: () => (success: false, channelsCount: 0));
+              .timeout(const Duration(seconds: 8), onTimeout: () => (success: false, channelsCount: 0));
           if (res.success) {
             item.status = DiagnosticStatus.passed;
             item.resultMessage = 'Triple-Pulse BLE Wave Sent to ${res.channelsCount} GATT Channel(s)';
@@ -278,7 +278,7 @@ class _HardwareDiagnosticsScreenState extends ConsumerState<HardwareDiagnosticsS
 
         case 'sos_channel':
           await ref.read(watchProvider.notifier).sendSosAlert()
-              .timeout(const Duration(seconds: 4), onTimeout: () => null);
+              .timeout(const Duration(seconds: 8), onTimeout: () => null);
           item.status = DiagnosticStatus.passed;
           item.resultMessage = 'SOS Haptic Burst & Foreground Channel Active';
           break;

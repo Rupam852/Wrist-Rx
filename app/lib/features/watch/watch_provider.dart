@@ -322,9 +322,7 @@ class WatchNotifier extends StateNotifier<WatchState> {
       return (success: false, channelsCount: 0);
     }
 
-    // 2. Direct BLE byte burst — 3 pulse waves
-    await _sendWatchTextAndVibrate('Test Alert', vibrationStrength: 3);
-    await Future.delayed(const Duration(milliseconds: 300));
+    // 2. Direct BLE byte burst — high speed pulse wave
     await _sendWatchTextAndVibrate('Test Alert', vibrationStrength: 3);
     return (success: true, channelsCount: _writeCharacteristics.length);
   }
