@@ -28,4 +28,9 @@ class ApiConstants {
   // SOS
   static const String sosTrigger = '/api/sos/trigger';
   static String sosHistory(String uid) => '/api/sos/$uid/history';
+
+  // Medicine Reminders
+  static const String remindersGet  = '/api/reminders';
+  static const String remindersSave = '/api/reminders';
+  static String reminderDelete(String reminderId) => '/api/reminders/$reminderId';
 }

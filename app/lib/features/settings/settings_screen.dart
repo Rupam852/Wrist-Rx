@@ -389,6 +389,39 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           const SizedBox(height: 24),
 
 
+          // ── Medicine Reminder ───────────────────────────
+          _SectionHeader('Health Reminders'),
+          Container(
+            decoration: BoxDecoration(
+              color: AppColors.cardDark,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AppColors.primary.withOpacity(0.25)),
+            ),
+            child: ListTile(
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+              leading: Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.medication_rounded, color: AppColors.primary, size: 24),
+              ),
+              title: const Text(
+                'Medicine Reminder',
+                style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 15),
+              ),
+              subtitle: const Text(
+                'Set medicine reminders — watch vibrates at reminder time',
+                style: TextStyle(color: Colors.white60, fontSize: 12),
+              ),
+              trailing: const Icon(Icons.chevron_right_rounded, color: Colors.white54),
+              onTap: () => context.push('/reminders'),
+            ),
+          ),
+          const SizedBox(height: 24),
+
+
           // ── About App ──────────────────────────────────
           _SectionHeader('About App'),
           Container(

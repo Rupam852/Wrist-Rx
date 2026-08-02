@@ -14,6 +14,7 @@ const healthRoutes = require('./routes/health');
 const watchRoutes = require('./routes/watch');
 const aiRoutes = require('./routes/ai');
 const sosRoutes = require('./routes/sos');
+const reminderRoutes = require('./routes/reminders');
 const { startMidnightReset } = require('./jobs/midnightReset');
 
 const app = express();
@@ -45,6 +46,7 @@ app.use('/api/health', healthRoutes);
 app.use('/api/watch', watchRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/sos', sosRoutes);
+app.use('/api/reminders', reminderRoutes);
 
 // ─── 404 Handler ──────────────────────────────────────────────
 app.use((req, res) => {

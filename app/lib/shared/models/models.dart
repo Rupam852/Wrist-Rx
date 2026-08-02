@@ -208,3 +208,63 @@ class ChatMessage {
 
   bool get isUser => role == 'user';
 }
+
+// ─────────────────────────────────────────────
+// Medicine Reminder Models
+// ─────────────────────────────────────────────
+
+class MedicineReminder {
+  final String reminderId; // UUID
+  final String name;
+  final String description;
+  final int timeHour;
+  final int timeMinute;
+
+  MedicineReminder({
+    required this.reminderId,
+    required this.name,
+    this.description = '',
+    required this.timeHour,
+    required this.timeMinute,
+  });
+
+  factory MedicineReminder.fromJson(Map<String, dynamic> json) => MedicineReminder(
+    reminderId:  json['reminderId'] ?? '',
+    name:        json['name'] ?? '',
+    description: json['description'] ?? '',
+    timeHour:    json['timeHour'] ?? 0,
+    timeMinute:  json['timeMinute'] ?? 0,
+  );
+
+  Map<String, dynamic> toJson() => {
+    'reminderId':  reminderId,
+    'name':        name,
+    'description': description,
+    'timeHour':    timeHour,
+    'timeMinute':  timeMinute,
+  };
+
+  /// Display time as HH:MM string
+  String get timeLabel {
+    final h = timeHour.toString().padLeft(2, '0');
+    final m = timeMinute.toString().padLeft(2, '0');
+    return '$h:$m';
+  }
+
+  /// 12-hour am/pm display
+  String get timeLabel12h {
+    final period = timeHour < 12 ? 'AM' : 'PM';
+    final h12    = timeHour == 0 ? 12 : (timeHour > 12 ? timeHour - 12 : timeHour);
+    final m      = timeMinute.toString().padLeft(2, '0');
+    return '$h12:$m $period';
+  }
+
+  MedicineReminder copyWith({String? name, String? description, int? timeHour, int? timeMinute}) =>
+      MedicineReminder(
+        reminderId:  reminderId,
+        name:        name ?? this.name,
+        description: description ?? this.description,
+        timeHour:    timeHour ?? this.timeHour,
+        timeMinute:  timeMinute ?? this.timeMinute,
+      );
+}

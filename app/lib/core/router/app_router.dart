@@ -10,6 +10,7 @@ import '../../features/profile/profile_settings_screen.dart';
 import '../../features/settings/settings_screen.dart';
 import '../../features/settings/sos_settings_screen.dart';
 import '../../features/settings/about_screen.dart';
+import '../../features/reminders/medicine_reminder_screen.dart';
 import '../../shared/widgets/main_shell.dart';
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -24,10 +25,11 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/', builder: (_, __) => const SplashScreen()),
       GoRoute(path: '/login', builder: (_, __) => const LoginScreen()),
       GoRoute(path: '/onboarding', builder: (_, __) => const AiOnboardingScreen()),
-      GoRoute(path: '/profile', builder: (_, __) => const ProfileSettingsScreen()),
-      GoRoute(path: '/settings', builder: (_, __) => const SettingsScreen()),
+      GoRoute(path: '/profile',    builder: (_, __) => const ProfileSettingsScreen()),
+      GoRoute(path: '/settings',   builder: (_, __) => const SettingsScreen()),
       GoRoute(path: '/sos-settings', builder: (_, __) => const SosSettingsScreen()),
-      GoRoute(path: '/about', builder: (_, __) => const AboutScreen()),
+      GoRoute(path: '/about',      builder: (_, __) => const AboutScreen()),
+      GoRoute(path: '/reminders',  builder: (_, __) => const MedicineReminderScreen()),
 
       ShellRoute(
         navigatorKey: _shellNavigatorKey,

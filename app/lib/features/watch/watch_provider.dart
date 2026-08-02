@@ -231,6 +231,44 @@ class WatchNotifier extends StateNotifier<WatchState> {
   }
 
 
+  // ─────────────────────────────────────────────────────────────────
+  // Public Watch Message API
+  // ─────────────────────────────────────────────────────────────────
+
+  /// 🆘 Sends SOS alert to watch — 3x vibration + "SOS Sent!" text
+  /// Called when user triggers SOS from the app.
+  Future<void> sendSosAlert() async {
+    if (_writeCharacteristics.isEmpty) return;
+    const sosText = 'SOS Sent!';
+    await _sendWatchTextAndVibrate(sosText, vibrationStrength: 3);
+  }
+
+  /// 💊 Sends medicine reminder notification to watch — 2x vibration + medicine name
+  /// Called by ReminderProvider when a reminder time fires.
+  Future<void> sendWatchNotification(String medicineName) async {
+    if (_writeCharacteristics.isEmpty) return;
+    final text = medicineName.length > 18 ? medicineName.substring(0, 18) : medicineName;
+    await _sendWatchTextAndVibrate('Take: $text', vibrationStrength: 2);
+  }
+
+  /// Internal helper: vibrate + optional text message via vendor BLE protocol
+  Future<void> _sendWatchTextAndVibrate(String text, {int vibrationStrength = 1}) async {
+    final textBytes = text.codeUnits.take(20).toList();
+    final len       = textBytes.length + 4;
+
+    for (final char in _writeCharacteristics) {
+      // ── Vibrate command (vendor: 0xAB 0x00 0x04 0xFF 0x74 <count>) ──
+      await _sendBleCommand(char, [0xAB, 0x00, 0x04, 0xFF, 0x74, vibrationStrength]);
+      await Future.delayed(const Duration(milliseconds: 100));
+
+      // ── Notification text (vendor: 0xAB 0x00 <len> 0xFF 0x72 0x02 0x00 <text>) ──
+      await _sendBleCommand(char, [0xAB, 0x00, len, 0xFF, 0x72, 0x02, 0x00, ...textBytes]);
+      await Future.delayed(const Duration(milliseconds: 50));
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────────
+
   Future<void> _sendBleCommand(BluetoothCharacteristic char, List<int> bytes) async {
     try {
       final noResp = char.properties.writeWithoutResponse;
