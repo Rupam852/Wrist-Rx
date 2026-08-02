@@ -29,6 +29,7 @@ class WatchState {
   final String? deviceName;
   final String? manufacturer;
   final HardwareProtocol protocol;
+  final WatchBrandProfile? selectedBrandProfile;
   final String? error;
 
   WatchState({
@@ -36,6 +37,7 @@ class WatchState {
     this.deviceName,
     this.manufacturer,
     this.protocol = HardwareProtocol.vendorGeneric,
+    this.selectedBrandProfile,
     this.error,
   });
 
@@ -44,6 +46,7 @@ class WatchState {
     String? deviceName,
     String? manufacturer,
     HardwareProtocol? protocol,
+    WatchBrandProfile? selectedBrandProfile,
     String? error,
   }) =>
       WatchState(
@@ -51,6 +54,7 @@ class WatchState {
         deviceName: deviceName ?? this.deviceName,
         manufacturer: manufacturer ?? this.manufacturer,
         protocol: protocol ?? this.protocol,
+        selectedBrandProfile: selectedBrandProfile ?? this.selectedBrandProfile,
         error: error ?? this.error,
       );
 }
@@ -58,6 +62,17 @@ class WatchState {
 class WatchNotifier extends StateNotifier<WatchState> {
   final Ref ref;
   WatchNotifier(this.ref) : super(WatchState());
+
+  /// Explicitly selects and locks watch brand protocol engine (Noise / Fire-Boltt / boAt / Universal)
+  void selectWatchBrand(WatchBrandProfile profile) {
+    _detectedBrandProfile = profile;
+    state = state.copyWith(selectedBrandProfile: profile);
+
+    // Send immediate time sync & probe burst tailored to selected brand
+    _triggerWatchSync();
+    Future.delayed(const Duration(milliseconds: 300), () => _triggerWatchSync());
+    Future.delayed(const Duration(milliseconds: 1000), () => _triggerWatchSync());
+  }
 
   final _api = ApiService();
   BluetoothDevice? _connectedDevice;
