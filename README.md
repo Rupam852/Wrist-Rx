@@ -52,6 +52,13 @@
 - **Auto-reconnect** — Persistent WebSocket connection to backend for live data
 - **Battery & Signal Status** — Real-time watch status monitoring
 
+### 💊 Smart Medicine Reminders
+- **5-Second Precision Ticker** — High-frequency clock ticker checks schedules every 5s for exact minute accuracy
+- **Direct BLE Smartwatch Haptic Burst** — Sends 3-pulse vibration waves & text popups to your smartwatch wrist motor
+- **1-Tap Test Vibration Button (🔔)** — Instantly test watch motor vibration and status bar alert for any medicine
+- **Tap-to-Edit Mode (✏️)** — Tap any saved reminder card to update medicine name, time, or dosage instructions
+- **Multi-Vendor Haptic Sync** — Supports Noise uRPC, Fire-Boltt DaFit, boAt, and Wrist Rx custom hardware
+
 ### 🆘 SOS Emergency Guardian
 - **1-Tap Emergency Dispatch** — Instant SMS + WhatsApp to emergency contacts
 - **GPS Location Sharing** — Exact coordinates sent with every SOS alert
