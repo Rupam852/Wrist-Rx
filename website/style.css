@@ -1116,6 +1116,56 @@ body {
   line-height: 1.6;
 }
 
+
+/* ── Social Connect Buttons ───────────────────────────────────────── */
+.social-links {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.social-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #e2e8f0;
+  text-decoration: none;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.1);
+  transition: all 0.22s ease;
+  width: fit-content;
+}
+
+.social-btn:hover {
+  background: rgba(255,255,255,0.14);
+  transform: translateX(4px);
+  color: #fff;
+}
+
+/* GitHub — slate dark */
+.social-btn:nth-child(1):hover {
+  background: rgba(36, 41, 47, 0.8);
+  border-color: rgba(255,255,255,0.2);
+}
+
+/* Instagram — purple-pink gradient */
+.social-btn-insta:hover {
+  background: linear-gradient(135deg, rgba(131,58,180,0.5), rgba(253,29,29,0.4), rgba(252,176,69,0.4));
+  border-color: rgba(253,29,29,0.3);
+}
+
+/* LinkFlow — emerald */
+.social-btn-link:hover {
+  background: rgba(0, 200, 83, 0.2);
+  border-color: rgba(0, 200, 83, 0.35);
+  color: #00E676;
+}
+
 /* ── Responsive Design & Mobile Overlap Protection ───────────────────── */
 @media (max-width: 992px) {
   .hero-title { font-size: 42px; }
