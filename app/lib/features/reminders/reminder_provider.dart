@@ -23,7 +23,7 @@ class ReminderState {
 
   const ReminderState({
     this.reminders         = const [],
-    this.watchAlertEnabled = false,
+    this.watchAlertEnabled = true,
     this.isLoading         = false,
     this.isSaving          = false,
     this.error,
@@ -69,15 +69,14 @@ class ReminderNotifier extends StateNotifier<ReminderState> {
 
   // ── Clock ticker: checks every 30s if a reminder should fire ──────────────
   void _startClock() {
-    _clockTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+    _clockTimer = Timer.periodic(const Duration(seconds: 15), (_) {
       _checkAndFire();
     });
   }
 
   void _checkAndFire() {
-    // Only run if watch is connected AND toggle is ON
     final watchConnected = ref.read(watchConnectedProvider);
-    if (!watchConnected || !state.watchAlertEnabled) return;
+    if (!watchConnected) return;
 
     final now    = DateTime.now();
     final minute = now.hour * 60 + now.minute;
@@ -97,7 +96,7 @@ class ReminderNotifier extends StateNotifier<ReminderState> {
     }
   }
 
-  /// Sends BLE notification to watch for this reminder
+  /// Sends BLE notification & status bar alert to watch for this reminder
   void _fireReminder(MedicineReminder reminder) {
     try {
       ref.read(watchProvider.notifier).sendWatchNotification(reminder.name);
