@@ -351,32 +351,35 @@ class WatchNotifier extends StateNotifier<WatchState> {
     final textBytes = text.codeUnits.take(20).toList();
     final len       = textBytes.length + 4;
 
-    // 1. Send brand-tuned native packets (e.g. Noise uRPC / DaFit / boAt) to primary characteristic
-    final primaryChar = _writeCharacteristics.first;
-    final primaryUuid = primaryChar.uuid.toString().toLowerCase();
+    for (final char in _writeCharacteristics) {
+      final cUuid = char.uuid.toString().toLowerCase();
 
-    if (_detectedBrandProfile != null) {
-      for (final p in _detectedBrandProfile!.vibrationProbes) {
-        await _sendBleCommand(primaryChar, p);
-      }
-      if (_detectedBrandProfile!.getNotificationPackets != null) {
-        for (final p in _detectedBrandProfile!.getNotificationPackets!(text)) {
-          await _sendBleCommand(primaryChar, p);
+      // 1. Send brand-tuned native packets (e.g. Noise uRPC / DaFit / boAt) to ALL write channels
+      if (_detectedBrandProfile != null) {
+        for (final p in _detectedBrandProfile!.vibrationProbes) {
+          _sendBleCommand(char, p);
+        }
+        if (_detectedBrandProfile!.getNotificationPackets != null) {
+          for (final p in _detectedBrandProfile!.getNotificationPackets!(text)) {
+            _sendBleCommand(char, p);
+          }
         }
       }
-    }
 
-    if (primaryUuid.contains('2a06')) {
-      await _sendBleCommand(primaryChar, [vibrationStrength > 1 ? 0x02 : 0x01]);
-    }
+      // 2. GATT Immediate Alert Service (0x1802 / 0x2A06)
+      if (cUuid.contains('2a06')) {
+        _sendBleCommand(char, [vibrationStrength > 1 ? 0x02 : 0x01]);
+      }
 
-    // 2. High-speed multi-vendor fallback burst across remaining write channels
-    for (final char in _writeCharacteristics) {
+      // 3. Multi-Vendor Fallback Burst across all channels in parallel
       _sendBleCommand(char, [0xAB, 0x00, 0x04, 0xFF, 0x74, vibrationStrength]);
       _sendBleCommand(char, [0xAB, 0x74, vibrationStrength]);
+      _sendBleCommand(char, [0x55, 0x74, vibrationStrength]);
+      _sendBleCommand(char, [0xAA, 0x74, vibrationStrength]);
       _sendBleCommand(char, [0xEA, 0x02, vibrationStrength]);
       _sendBleCommand(char, [0xEA, 0x01, ...textBytes]);
       _sendBleCommand(char, [0xAB, 0x00, len, 0xFF, 0x72, 0x02, 0x00, ...textBytes]);
+      _sendBleCommand(char, [0x55, 0x72, ...textBytes]);
     }
   }
 
