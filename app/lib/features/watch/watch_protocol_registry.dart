@@ -31,6 +31,31 @@ class WatchBrandProfile {
 
 class WatchProtocolRegistry {
   static List<WatchBrandProfile> globalBrandProfiles = [
+    // 0. WristRx Custom Smartwatch (Prototype Hardware Engine)
+    WatchBrandProfile(
+      brandName: 'WristRx Custom Watch',
+      namePrefixes: ['wristrx', 'prototype', 'custom'],
+      headerBytes: [0x77],
+      stepProbes: [
+        [0x77, 0x01],
+      ],
+      hrProbes: [
+        [0x77, 0x0A],
+      ],
+      bpProbes: [
+        [0x77, 0x52],
+      ],
+      batteryProbes: [
+        [0x77, 0x91],
+      ],
+      spo2Probes: [
+        [0x77, 0x53],
+      ],
+      vibrationProbes: [
+        [0x01, 0x56, 0x49, 0x42],
+      ],
+    ),
+
     // 1. Fire-Boltt (Ninja, Ring, Phoenix, Hurricane, Invincible, Vision, Dazzle, Talk, Cobra, Supernova) — DaFit Protocol Engine
     WatchBrandProfile(
       brandName: 'Fire-Boltt',
