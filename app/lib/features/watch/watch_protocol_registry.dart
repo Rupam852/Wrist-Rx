@@ -130,39 +130,62 @@ class WatchProtocolRegistry {
       },
     ),
 
-    // 3. Noise (ColorFit, Pulse, Evolve, Fit, Loop, Icon, Turbo) — RT-Thread OS uRPC Engine
+    // 3. Noise (ColorFit, Pulse, Evolve, Fit, Loop, Icon, Turbo) — RT-Thread OS uRPC & Realtek Engine
     WatchBrandProfile(
       brandName: 'Noise',
-      namePrefixes: ['noise', 'colorfit', 'pulse', 'evolve', 'loop', 'icon', 'turbo'],
+      namePrefixes: ['noise', 'colorfit', 'pulse', 'evolve', 'loop', 'icon', 'turbo', 'color fit'],
       headerBytes: [0xAB, 0x55, 0xEA, 0xFC, 0x01],
       stepProbes: [
         [0xAB, 0x00, 0x04, 0xFF, 0x51],
+        [0xAB, 0x51],
+        [0x55, 0x51],
+        [0x55, 0x01],
         [0x55, 0x02],
-        [0x01, 0x01, 0x00, 0x01, 0x30, 0x01], // uRPC system_data_sync
+        [0xEA, 0x01],
+        [0xAB, 0x31],
+        [0x01, 0x01, 0x00, 0x01, 0x14, 0x01], // uRPC system_data_sync
       ],
       hrProbes: [
+        [0xAB, 0x00, 0x04, 0xFF, 0x0A],
         [0xAB, 0x0A],
         [0xEA, 0x0A],
+        [0x55, 0x0A],
       ],
       bpProbes: [
+        [0xAB, 0x00, 0x04, 0xFF, 0x52],
         [0xAB, 0x52],
+        [0xEA, 0x52],
       ],
       batteryProbes: [
+        [0xAB, 0x00, 0x04, 0xFF, 0x91],
         [0xAB, 0x91],
         [0xAB, 0x03],
-        [0x01, 0x01, 0x00, 0x02, 0x30, 0x01], // uRPC service_settings_get
+        [0xEA, 0x91],
+        [0x01, 0x01, 0x00, 0x02, 0x14, 0x01], // uRPC service_settings_get
+      ],
+      spo2Probes: [
+        [0xAB, 0x00, 0x04, 0xFF, 0x53],
+        [0xAB, 0x53],
+        [0x55, 0x53],
+        [0xEA, 0x53],
+        [0xAB, 0x12],
+        [0x55, 0x12],
+        [0x01, 0x01, 0x00, 0x03, 0x14, 0x01],
       ],
       vibrationProbes: [
         NoiseUrpcDriver.buildVibrationPacket(),
+        [0xAB, 0x00, 0x04, 0xFF, 0x74, 0x02],
         [0xEA, 0x02, 0x02],
         [0xAB, 0x74, 0x02],
         [0x55, 0x74, 0x02],
       ],
       getNotificationPackets: (text) {
         final b = text.codeUnits.take(20).toList();
+        final len = b.length + 4;
         return [
           NoiseUrpcDriver.buildNotificationPushPacket(text),
-          [0xEA, 0x01, ...b],
+          [0xEA, 0x01, 0x01, ...b],
+          [0xAB, 0x00, len, 0xFF, 0x72, 0x02, 0x00, ...b],
           [0x55, 0x72, ...b],
           [0xAB, 0x72, 0x01, ...b],
         ];
@@ -407,8 +430,8 @@ class NoiseUrpcDriver {
     final payload = <int>[0x01, ...funcName, ...ffiArgs];
 
     // D2D Header: [src_id=1, dst_id=0, pkt_id, attr]
-    // attr = (REQ=0 << 6) | (need_ack=1 << 5) | (need_rsp=1 << 4) = 0x30
-    final d2dHeader = <int>[0x01, 0x00, _pktCounter, 0x30];
+    // attr = (REQ=0 << 6) | (need_ack=0 << 5) | (need_rsp=1 << 4) | (priority=1 << 2) = 0x14
+    final d2dHeader = <int>[0x01, 0x00, _pktCounter, 0x14];
 
     // TransPacket wrapper: [Type.D2D = 1, ...d2dHeader, ...payload]
     return [0x01, ...d2dHeader, ...payload];
@@ -419,7 +442,7 @@ class NoiseUrpcDriver {
     _pktCounter = (_pktCounter + 1) % 256;
     final funcName = [... 'svc_alert_vibrate'.codeUnits, 0];
     final payload = <int>[0x01, ...funcName, ..._argU32(2)];
-    final d2dHeader = <int>[0x01, 0x00, _pktCounter, 0x30];
+    final d2dHeader = <int>[0x01, 0x00, _pktCounter, 0x14];
     return [0x01, ...d2dHeader, ...payload];
   }
 

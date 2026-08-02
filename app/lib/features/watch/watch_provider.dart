@@ -338,18 +338,18 @@ class WatchNotifier extends StateNotifier<WatchState> {
 
   Future<void> _sendBleCommand(BluetoothCharacteristic char, List<int> bytes) async {
     try {
-      // 1. Try 'write with response' first if supported (most smartwatch firmware requires ACK)
-      if (char.properties.write) {
-        await char.write(bytes, withoutResponse: false);
-      } else if (char.properties.writeWithoutResponse) {
+      // 1. Try 'write without response' first for zero-latency radio TX queue delivery
+      if (char.properties.writeWithoutResponse) {
         await char.write(bytes, withoutResponse: true);
+      } else if (char.properties.write) {
+        await char.write(bytes, withoutResponse: false);
       }
-      await Future.delayed(const Duration(milliseconds: 30));
+      await Future.delayed(const Duration(milliseconds: 20));
     } catch (_) {
       try {
-        // 2. Fallback to 'write without response' if write with ACK failed
-        if (char.properties.writeWithoutResponse) {
-          await char.write(bytes, withoutResponse: true);
+        // 2. Fallback to 'write with response' if writeWithoutResponse failed
+        if (char.properties.write) {
+          await char.write(bytes, withoutResponse: false);
         }
       } catch (_) {}
     }
