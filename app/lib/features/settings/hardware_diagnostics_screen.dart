@@ -77,12 +77,6 @@ class _HardwareDiagnosticsScreenState extends ConsumerState<HardwareDiagnosticsS
       icon: Icons.favorite_rounded,
     ),
     DiagnosticItem(
-      id: 'spo2_telemetry',
-      title: 'Blood Oxygen (SpO2 %) Sensor',
-      description: 'Queries SpO2 sensor & validates live oxygen percentage stream',
-      icon: Icons.water_drop_rounded,
-    ),
-    DiagnosticItem(
       id: 'bp_telemetry',
       title: 'Blood Pressure Sensor Stream',
       description: 'Queries Systolic/Diastolic telemetry & validates pressure values',
@@ -233,18 +227,6 @@ class _HardwareDiagnosticsScreenState extends ConsumerState<HardwareDiagnosticsS
           } else {
             item.status = DiagnosticStatus.passed;
             item.resultMessage = 'PPG Sensor Listening • Wear watch on wrist for live BPM reading';
-          }
-          break;
-
-        case 'spo2_telemetry':
-          await Future.delayed(const Duration(milliseconds: 500));
-          final spo2 = healthState.spo2;
-          if (spo2 > 0) {
-            item.status = DiagnosticStatus.passed;
-            item.resultMessage = 'Live SpO2: $spo2% Oxygen Level (Optical sensor active)';
-          } else {
-            item.status = DiagnosticStatus.passed;
-            item.resultMessage = 'SpO2 Sensor Active • Keep wrist still for live % reading';
           }
           break;
 

@@ -342,24 +342,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
                     pulseController: _pulseController,
                     smallValue: isConnected && !isStepsSupported,
                   ),
-                  // 4. Blood Oxygen (SpO2 %)
-                  _MetricCard(
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFF06B6D4), Color(0xFF0284C7)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    icon: Icons.air_rounded,
-                    title: 'Blood Oxygen (SpO2)',
-                    value: (isConnected && !isSpo2Supported)
-                        ? 'N/A'
-                        : (hasSpo2 ? '${health.spo2}%' : '--%'),
-                    unit: (isConnected && !isSpo2Supported) ? 'Not supported on watch' : 'SpO2 %',
-                    isPulsing: isConnected && hasSpo2 && isSpo2Supported,
-                    pulseController: _pulseController,
-                    smallValue: isConnected && !isSpo2Supported,
-                  ),
-                  // 5. GPS Location (Tap to view/share fresh map link)
+                  // 4. GPS Location (Tap to view/share fresh map link)
                   GestureDetector(
                     onTap: () async {
                       // Instantly refresh GPS coordinates right now on card tap
