@@ -41,15 +41,10 @@ class HealthNotifier extends StateNotifier<HealthReading> {
     // 1. Load latest stored data first (local device storage)
     fetchLatestDataFromBackend();
 
-    // 2. Start pedometer step counter sensor for hybrid step tracking while walking
-    _pedometer.init(onStepCount: (steps) {
-      if (steps > 0) {
-        updateFromWatch({'steps': steps});
-      }
-    });
+    // Note: Phone mobile sensor step counting is DISABLED.
+    // Step data comes 100% strictly and exclusively from the Smartwatch BLE Pedometer!
 
-
-    // 3. Connect WebSocket for live push ONLY if user enabled cloud sync
+    // 2. Connect WebSocket for live push ONLY if user enabled cloud sync
     final user = _ref.read(userModelProvider);
     if (user?.settings.syncCloud == true) {
       _ws.connect(onDataReceived: (data) {
