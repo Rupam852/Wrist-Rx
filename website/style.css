@@ -1121,20 +1121,20 @@ body {
 .social-links {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
   margin-top: 6px;
 }
 
 .social-links .social-btn {
   display: flex !important;
   align-items: center !important;
-  gap: 14px !important;
-  padding: 12px 14px !important;
-  border-radius: 14px !important;
+  gap: 10px !important;
+  padding: 8px 12px !important;
+  border-radius: 10px !important;
   text-decoration: none !important;
   background: rgba(255,255,255,0.05) !important;
-  border: 1px solid rgba(255,255,255,0.09) !important;
-  transition: all 0.22s ease !important;
+  border: 1px solid rgba(255,255,255,0.08) !important;
+  transition: all 0.2s ease !important;
   color: inherit !important;
   width: 100% !important;
   box-sizing: border-box !important;
@@ -1142,42 +1142,38 @@ body {
 
 .social-links .social-btn:hover {
   background: rgba(255,255,255,0.1) !important;
-  transform: translateX(5px);
-  border-color: rgba(255,255,255,0.2) !important;
+  transform: translateX(4px);
+  border-color: rgba(255,255,255,0.18) !important;
 }
 
-.social-btn-icon {
-  width: 40px;
-  height: 40px;
-  border-radius: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+.social-icon {
+  width: 18px;
+  height: 18px;
   flex-shrink: 0;
-  color: #fff;
+  opacity: 0.75;
 }
 
-.github-icon  { background: #24292f; }
-.insta-icon   { background: linear-gradient(135deg, #833ab4, #fd1d1d, #fcb045); }
-.link-icon    { background: linear-gradient(135deg, #00C853, #10B981); }
+.social-links .social-btn:hover .social-icon {
+  opacity: 1;
+}
 
 .social-btn-text {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 1px;
 }
 
 .social-btn-name {
-  font-size: 14px;
-  font-weight: 700;
+  font-size: 13px;
+  font-weight: 600;
   color: #e2e8f0;
   line-height: 1.2;
 }
 
 .social-btn-desc {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 400;
-  color: rgba(226, 232, 240, 0.55);
+  color: rgba(226, 232, 240, 0.45);
   line-height: 1.3;
 }
 
