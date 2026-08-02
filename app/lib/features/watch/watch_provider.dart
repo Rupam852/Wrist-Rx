@@ -105,25 +105,38 @@ class WatchNotifier extends StateNotifier<WatchState> {
       // Sync pre-existing app step baseline before receiving live watch telemetry
       ref.read(healthProvider.notifier).syncWatchBaseline();
 
-      // Discover BLE services & run Hardware Capabilities Handshake
+      // 1. Request MTU 512 for max BLE payload bandwidth (prevents packet truncation)
+      try {
+        await device.requestMtu(512);
+      } catch (_) {}
+
+      // 2. Discover BLE services & run Hardware Capabilities Handshake
       try {
         final services = await device.discoverServices();
         await _performHardwareHandshake(device, services);
       } catch (_) {}
 
-      // Send initial sync commands immediately in burst
+      // 3. Send initial time sync + probe burst immediately
+      final now = DateTime.now();
+      final timeBytes = [
+        now.year & 0xFF, (now.year >> 8) & 0xFF,
+        now.month, now.day, now.hour, now.minute, now.second,
+      ];
+      for (final char in _writeCharacteristics) {
+        _sendBleCommand(char, [0xAB, 0x00, 0x0B, 0xFF, 0x93, ...timeBytes]);
+        _sendBleCommand(char, [0xEA, 0x93, ...timeBytes]);
+      }
+
       _triggerWatchSync();
       Future.delayed(const Duration(milliseconds: 500), () => _triggerWatchSync());
       Future.delayed(const Duration(milliseconds: 1500), () => _triggerWatchSync());
 
-      // Start adaptive probe sync (only for vendor protocols that need pinging)
+      // 4. Continuous periodic probe timer every 3 seconds (ensures continuous live SpO2, Heart Rate, Steps, & Reminders)
       _watchPingTimer?.cancel();
       _pingCycle = 0;
-      if (state.protocol != HardwareProtocol.standardGatt) {
-        _watchPingTimer = Timer.periodic(const Duration(seconds: 3), (_) {
-          _triggerWatchSync();
-        });
-      }
+      _watchPingTimer = Timer.periodic(const Duration(seconds: 3), (_) {
+        _triggerWatchSync();
+      });
 
       state = state.copyWith(status: WatchConnectionStatus.connected);
       ref.read(watchConnectedProvider.notifier).state = true;
