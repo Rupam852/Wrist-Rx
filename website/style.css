@@ -1132,8 +1132,8 @@ body {
   padding: 8px 12px !important;
   border-radius: 10px !important;
   text-decoration: none !important;
-  background: rgba(255,255,255,0.05) !important;
-  border: 1px solid rgba(255,255,255,0.08) !important;
+  background: rgba(0,0,0,0.03) !important;
+  border: 1px solid rgba(0,0,0,0.08) !important;
   transition: all 0.2s ease !important;
   color: inherit !important;
   width: 100% !important;
@@ -1141,20 +1141,22 @@ body {
 }
 
 .social-links .social-btn:hover {
-  background: rgba(255,255,255,0.1) !important;
+  background: rgba(0,0,0,0.07) !important;
   transform: translateX(4px);
-  border-color: rgba(255,255,255,0.18) !important;
+  border-color: rgba(0,0,0,0.15) !important;
 }
 
 .social-icon {
   width: 18px;
   height: 18px;
   flex-shrink: 0;
-  opacity: 0.75;
+  color: #333;
+  opacity: 0.8;
 }
 
 .social-links .social-btn:hover .social-icon {
   opacity: 1;
+  color: #111;
 }
 
 .social-btn-text {
@@ -1165,15 +1167,15 @@ body {
 
 .social-btn-name {
   font-size: 13px;
-  font-weight: 600;
-  color: #e2e8f0;
+  font-weight: 700;
+  color: #1a1a2e !important;
   line-height: 1.2;
 }
 
 .social-btn-desc {
   font-size: 11px;
   font-weight: 400;
-  color: rgba(226, 232, 240, 0.45);
+  color: #6b7280 !important;
   line-height: 1.3;
 }
 
